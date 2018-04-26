@@ -14,7 +14,7 @@ def board_init():
     :return: an empty game board, as a 2D array
     """
     b = [['-' for x in range(0,8)] for y in range(0,8)]
-    for i in [[0,0] [0,7] [7,0] [7,7]]:
+    for i in [[0,0], [0,7], [7,0], [7,7]]:
         b[i[0]][i[1]] = 'X'
 
     return b
@@ -32,19 +32,177 @@ def board_duplicate(board):
             n_board[c][r] = board[c][r]
     return n_board
 
-def on_board(row, col):
+def on_board(row, col, shrinks=None):
     """
     Checks whether a given an indicated position is legal
 
     :param row: the row to check
     :param col: the column to check
+    :param shrinks: the number of times the board has shrunk (default 0)
     :return: True if place valid, False otherwise
     """
-    if row not in range(0,8):
+    if shrinks == None:
+        s = 0
+    else:
+        s = shrinks
+    if row not in range(s,8-s):
         return False # row invalid
-    if col not in range(0,8):
+    if col not in range(s,8-s):
         return False # column invalid
     return True # position valid
+
+def can_move(board, row, column, shrinks, direction):
+    """
+    Checks whether an indicated piece can move in the indicated direction
+
+    :param board: the board state to check
+    :param row: the row of the piece
+    :param column: the column of the piece
+    :param shrinks: the number of times the board has shrunk
+    :param direction: the desired movement direction
+    :return: new co-ords tuple if move possible, None otherwise
+    """
+    if direction == "left":
+        if on_board(row, column-1, shrinks):
+            if board[column-1][row] == '-':
+                # can move left
+                return (column-1, row)
+    elif direction == "right":
+        if on_board(row, column+1, shrinks):
+            if board[column+1][row] == '-':
+                # can move right
+                return (column+1, row)
+    elif direction == "up":
+        if on_board(row-1, column, shrinks):
+            if board[column][row-1] == '-':
+                # can move up
+                return (column, row-1)
+    elif direction == "down":
+        if on_board(row+1, column, shrinks):
+            if board[column][row+1] == '-':
+                # can move down
+                return (column, row+1)
+    else:
+        # cannot perform desired move
+        return None
+
+def can_jump(board, row, column, shrinks, direction):
+    """
+    Checks whether an indicated piece can jump in the indicated direction
+    Assumes the piece will be jumping, i.e. already known to not move
+
+    :param board: the board state to check
+    :param row: the row of the piece
+    :param column: the column of the piece
+    :param shrinks: the number of times the board has shrunk
+    :param direction: the desired jumping direction
+    :return: new co-ords tuple if jump possible, None otherwise
+    """
+    if direction == "left":
+        if on_board(row, column-2, shrinks):
+            if board[column-2][row] == '-':
+                # can jump left
+                return (column-2, row)
+    elif direction == "right":
+        if on_board(row, column+2, shrinks):
+            if board[column+2][row] == '-':
+                # can jump right
+                return (column+2, row)
+    elif direction == "up":
+        if on_board(row-2, column, shrinks):
+            if board[column][row-2] == '-':
+                # can jump up
+                return (column, row-2)
+    elif direction == "down":
+        if on_board(row+2, column, shrinks):
+            if board[column][row+2] == '-':
+                # can jump down
+                return (column, row+2)
+    else:
+        # cannot perform desired jump
+        return None
+
+def moves_available(board, my_p, shrinks):
+    """
+    Counts the number of possible moves a player can perform
+
+    :param board: the provided board state to check
+    :param my_p: the piece type to check for (symbol)
+    :param shrinks: the number of times the board has shrunk
+    :return: the total number of moves possible
+    """
+    moves = 0
+    directions = ["left","right","up","down"]
+    for r in range(0,8):
+        for c in range(0,8):
+            # check each relevant piece on the board
+            if board[c][r] == my_p:
+                for d in directions:
+                    if can_move(board,r,c,shrinks,d) is not None:
+                        # a piece can move
+                        moves += 1
+                    elif can_jump(board,r,c,shrinks,d)is not None:
+                        # a piece can jump instead
+                        moves += 1
+    return moves
+
+def piece_move(board, row, col, direction):
+    """
+    Moves a piece in the indicated direction
+    Assumes the piece can move in this direction
+
+    :param board: the board to update
+    :param row: the row of the piece to move
+    :param col: the column of the piece to move
+    :param direction: the direction to move the piece in
+    :return: the updated board
+    """
+    if direction == "left":
+        # move left
+        board[col-1][row] = board[col][row]
+        board[col][row] = '-'
+    elif direction == "right":
+        # move right
+        board[col+1][row] = board[col][row]
+        board[col][row] = '-'
+    elif direction == "up":
+        # move up
+        board[col][row-1] = board[col][row]
+        board[col][row] = '-'
+    elif direction == "down":
+        # move down
+        board[col][row+1] = board[col][row]
+        board[col][row] = '-'
+    return board
+
+def piece_jump(board, row, col, direction):
+    """
+    Jumps a piece in the indicated direction
+    Assumes the piece can jump in this direction
+
+    :param board: the board to update
+    :param row: the row of the piece to jump
+    :param col: the column of the piece to jump
+    :param direction: the direction to jump the piece in
+    :return: the updated board
+    """
+    if direction == "left":
+        # jump left
+        board[col-2][row] = board[col][row]
+        board[col][row] = '-'
+    elif direction == "right":
+        # jump right
+        board[col+2][row] = board[col][row]
+        board[col][row] = '-'
+    elif direction == "up":
+        # jump up
+        board[col][row-2] = board[col][row]
+        board[col][row] = '-'
+    elif direction == "down":
+        # jump down
+        board[col][row+2] = board[col][row]
+        board[col][row] = '-'
+    return board
 
 def surrounded(board, row, col):
     """
@@ -121,12 +279,12 @@ def update(board, action, p_my, p_op):
         return board
     elif (type(action[0]) == int):
         # a tuple of ints, so a piece was placed
-        (x, y) = action
+        (y, x) = action
         board[y][x] = p_op
         board = eliminate(board, p_my, p_op)
     else:
         # a tuple of tuples, so a piece was moved
-        ((xa, ya), (xb, yb)) = action
+        ((ya, xa), (yb, xb)) = action
         board[ya][xa] = '-'
         board[yb][xb] = p_op
         board = eliminate(board, p_my, p_op)
