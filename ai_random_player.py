@@ -113,8 +113,8 @@ class Player:
 
         :param action: the opponent's last move
         """
-        self.board = player_functions.update(self.board,
-            action, self.my_piece, self.op_piece)
+        player_functions.update(
+            self.board,action, self.my_piece, self.op_piece)
 
     def action(self, turns):
         """
