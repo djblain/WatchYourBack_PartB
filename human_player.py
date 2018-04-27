@@ -179,23 +179,14 @@ class Player:
         turn_valid = False
         # know how many times board has shrunk
         shrinks = 0
-        if turns >= 128:
-            shrinks += 1
-            # update corner locations
-            for p in [[1,1],[1,6],[6,1],[6,6]]:
-                self.board[p[1]][p[0]] = 'X'
-        if turns >= 192:
-            shrinks += 1
-            # update corner locations
-            for p in [[2,2],[2,5],[5,2],[5,5]]:
-                self.board[p[1]][p[0]] = 'X'
-        if shrinks > 0:
-            # update outside region
-            for r in range(8):
-                for c in range(8):
-                    if (r < shrinks or c < shrinks or r > 7-shrinks
-                            or c > 7-shrinks):
-                        self.board[c][r] = '='
+        if int(turns/2) == 64:
+            # 64 turns have passed for each player
+            shrinks = 1
+            player_functions.shrink(self.board,shrinks)
+        elif int(turns/2) == 96:
+            # 96 turns have passed for each player
+            shrinks = 2
+            player_functions.shrink(self.board,shrinks)
         while not turn_valid:
             # have the player attempt a move
             print('-'*32)

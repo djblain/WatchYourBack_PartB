@@ -286,6 +286,26 @@ def eliminate(board, e_first, e_second):
     # done eliminating
     return board
 
+def shrink(board, shrinks):
+    """
+    Shrink the input game board
+
+    :param board: the board to shrink
+    :param shrinks: the number of times to shrink
+    """
+    s = shrinks # short-hand
+    for r in range(8):
+        for c in range(8):
+            # check if space now 'out of bounds'
+            if r < s or c < s or r > 7-s or c > 7-s:
+                # replace with arbitrary symbol (not O, @, - or X)
+                board[c][r] = '='
+    # new corner locations
+    n_corners = [[s,s],[s,7-s],[7-s,s],[7-s,7-s]]
+    for n in n_corners:
+        # place new corners
+        board[n[1]][n[0]] = 'X'
+
 def update(board, action, p_my, p_op):
     """
     Update the player's board based on the opponent's move

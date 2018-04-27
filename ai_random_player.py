@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------------------
 # Name:         ai_random_player.py
-# Purpose:      An AI player that purposefully plays a bad game, by 'randomly'
-#               placing and moving pieces. Used for testing purposes
+# Purpose:      An AI player that purposefully plays a 'bad' game, by 'randomly'
+#               placing and moving pieces. Used for testing purposes.
 #
 # Author:       Daniel Blain and Anjana Basani
 #
@@ -127,46 +127,37 @@ class Player:
         r_val = None # return value
         # know how many times board has shrunk
         shrinks = 0
-        if turns >= 128:
-            shrinks += 1
-            # update corner locations
-            for p in [[1,1],[1,6],[6,1],[6,6]]:
-                self.board[p[1]][p[0]] = 'X'
-        if turns >= 192:
-            shrinks += 1
-            # update corner locations
-            for p in [[2,2],[2,5],[5,2],[5,5]]:
-                self.board[p[1]][p[0]] = 'X'
-        if shrinks > 0:
-            # update outside region
-            for r in range(8):
-                for c in range(8):
-                    if (r < shrinks or c < shrinks or r > 7-shrinks
-                            or c > 7-shrinks):
-                        self.board[c][r] = '='
-        print('-'*32)
+        if int(turns/2) == 64:
+            # 64 turns have passed for each player
+            shrinks = 1
+            player_functions.shrink(self.board,shrinks)
+        elif int(turns/2) == 96:
+            # 96 turns have passed for each player
+            shrinks = 2
+            player_functions.shrink(self.board,shrinks)
+#        print('-'*32)
         if self.placed < 12:
             # placing phase
-            print("Placing phase for " + self.colour + " player")
+#            print("Placing phase for " + self.colour + " player")
             r_val = self.place()
-            print("Placement by " + self.colour + " at position (" +
-                str(r_val[0]) + ", " + str(r_val[1]) + ")")
+#            print("Placement by " + self.colour + " at position (" +
+#                str(r_val[0]) + ", " + str(r_val[1]) + ")")
             self.placed += 1
         else:
             # moving phase
             # check if can do anything
             m = player_functions.moves_available(
                 self.board,self.my_piece,shrinks)
-            print("Moving phase for " + self.colour + " player")
-            print("Can make " + str(m) + " move(s)")
+#            print("Moving phase for " + self.colour + " player")
+#            print("Can make " + str(m) + " move(s)")
             if m == 0:
-                print("Can't make any moves!")
+#                print("Can't make any moves!")
                 r_val = None
             else:
                 r_val = self.move(shrinks)
-                print("Moved from " + str(r_val[0]) + " to " +
-                    str(r_val[1]))
-        print('-'*32)
+#                print("Moved from " + str(r_val[0]) + " to " +
+#                    str(r_val[1]))
+#        print('-'*32)
         player_functions.eliminate(self.board, self.op_piece, self.my_piece)
         #player_functions.print_board(self.board)
         return r_val
