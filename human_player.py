@@ -48,16 +48,6 @@ class Player:
             print("Invalid colour! Use 'white' or 'black'")
             exit()
 
-    def print_board(self):
-        """
-        Prints the current state of the board, as this player sees it
-        """
-        for r in range(8):
-            s = ""
-            for c in range(8):
-                s = s + self.board[c][r] + " "
-            print(s)
-
     def place(self):
         """
         Have the player attempt to place a piece (during placing phase)
@@ -118,7 +108,7 @@ class Player:
         if p_in == "quit":
             exit()
         elif p_in == "print":
-            self.print_board()
+            player_functions.print_board(self.board)
         p_split = p_in.split()
         # check that we have two inputs
         if len(p_split) != 2:
@@ -146,29 +136,26 @@ class Player:
         a_directions = ["left","right","up","down"] # allowed direction inputs
         direction = input("Input a direction (left, right, up, down): ")
         if direction == "quit":
-            # player want to abort program
+            # player wants to abort program
             exit()
         if direction not in a_directions:
             # not a valid direction
             print("Invalid direction! Must be in " + str(a_directions))
             return None
         # check if movement or jumping possible
-        m = player_functions.can_move(self.board,i_r,i_c,shrinks,direction)
-        j = player_functions.can_jump(self.board,i_r,i_c,shrinks,direction)
-        if m is not None:
+        m = (i_c, i_r)
+        if player_functions.can_move(self.board,i_r,i_c,shrinks,direction):
             # can move
-            board = player_functions.piece_move(self.board,i_r,i_c,direction)
-            o = m
-        elif j is not None:
+            m = player_functions.piece_move(self.board,i_r,i_c,direction)
+        elif player_functions.can_jump(self.board,i_r,i_c,shrinks,direction):
             # can't move, can jump
-            board = player_functions.piece_jump(self.board,i_r,i_c,direction)
-            o = j
+            m = player_functions.piece_jump(self.board,i_r,i_c,direction)
         else:
             # invalid move
             print("Cannot move this piece in this direction!")
             return None
         # movement occured, yay
-        return ((i_c, i_r), o)
+        return ((i_c, i_r), m)
 
 
     def update(self, action):
@@ -206,8 +193,8 @@ class Player:
             # update outside region
             for r in range(8):
                 for c in range(8):
-                    if (r < shrinks or c < shrinks or r > 8-shrinks
-                            or c > 8-shrinks):
+                    if (r < shrinks or c < shrinks or r > 7-shrinks
+                            or c > 7-shrinks):
                         self.board[c][r] = '='
         while not turn_valid:
             # have the player attempt a move
@@ -245,6 +232,5 @@ class Player:
                         r_val = move
                         turn_valid = True
             print('-'*32)
-        board = player_functions.eliminate(
-            self.board, self.op_piece, self.my_piece)
+        player_functions.eliminate(self.board, self.op_piece, self.my_piece)
         return r_val
