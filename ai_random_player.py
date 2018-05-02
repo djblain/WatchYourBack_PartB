@@ -10,7 +10,7 @@
 
 import player_functions
 from sys import exit
-import random # need these to handle randomness
+import random # need this to handle randomness
 
 class Player:
     """Class for a 'bad' AI player which behaves randomly"""

@@ -258,6 +258,43 @@ def surrounded(board, row, col):
     # not surrounded
     return False
 
+def can_surround(board, row, col):
+    """
+    Determines whether a piece could become surrounded
+    To be used ONLY during placing phase
+    Piece shouldn't already be surrounded!
+
+    :param board: the board to check
+    :param row: the row of the piece
+    :param col: the column of the piece
+    :return: a position the opponent could use to surround, or None if no such
+        position is found
+    """
+    p = board[col][row] # piece to check
+    if p not in ['O', '@']:
+        return None
+    if p == 'O':
+        e = ['@', 'X'] # hazards for white
+    else:
+        e = ['O', 'X'] # hazards for black
+    l_adjacent = [[-1,0],[1,0],[0,-1],[0,1]] # relative adjacent locations
+    for l in l_adjacent:
+        nc = l[0] + col
+        nr = l[1] + row
+        if on_board(nr, nc):
+            # position is valid
+            if board[nc][nr] in e:
+                # enemy adjacent, check opposite side
+                co = col - l[0]
+                ro = row - l[1]
+                if on_board(ro, co):
+                    # opposite square valid
+                    if board[co][ro] != p:
+                        # not protected by ally
+                        return (co, ro)
+    # cannot get surrounded here
+    return None
+
 def eliminate(board, e_first, e_second):
     """
     Updates the given board so that pieces are eliminated correctly
