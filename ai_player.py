@@ -267,8 +267,12 @@ class Player:
                     # shrink, if necessary
                     if turns+1 in [128, 129]:
                         player_functions.shrink(n_board, 1)
+                        player_functions.eliminate(
+                            n_board, self.op_piece, self.my_piece)
                     elif turns+1 in [192, 193]:
                         player_functions.shrink(n_board, 2)
+                        player_functions.eliminate(
+                            n_board, self.op_piece, self.my_piece)
                     n_score = self.move_next(
                         n_board, False, turns + 1, a, b, depth-1)
                     s = max(s, n_score)
@@ -306,8 +310,12 @@ class Player:
                     # shrink, if necessary
                     if turns+1 in [128, 129]:
                         player_functions.shrink(n_board, 1)
+                        player_functions.eliminate(
+                            n_board, self.my_piece, self.op_piece)
                     elif turns+1 in [192, 193]:
                         player_functions.shrink(n_board, 2)
+                        player_functions.eliminate(
+                            n_board, self.my_piece, self.op_piece)
                     n_score = self.move_next(
                         n_board, True, turns + 1, a, b, depth-1)
                     s = min(s, n_score)
@@ -358,8 +366,12 @@ class Player:
             # shrink, if necessary
             if turns+1 in [128, 129]:
                 player_functions.shrink(n_board, 1)
+                player_functions.eliminate(
+                    n_board, self.op_piece, self.my_piece)
             elif turns+1 in [192, 193]:
                 player_functions.shrink(n_board, 2)
+                player_functions.eliminate(
+                    n_board, self.op_piece, self.my_piece)
             n_score = self.move_next(
                 n_board, False, turns + 1, s_best, 10000, 1+shrinks*2)
             if n_score > s_best:
