@@ -63,6 +63,20 @@ def on_board(row, col, shrinks=None):
         return False # column invalid
     return True # position valid
 
+def get_shrinks(turns):
+    """
+    Returns the number of shrinks which have occured so far
+
+    :param turns: the number of turns into the moving phase
+    :return: the number of shrinks which have so far occured
+    """
+    if turns >= 192:
+        return 2
+    elif turns >= 128:
+        return 1
+    else:
+        return 0
+
 def can_move(board, row, column, shrinks, direction):
     """
     Checks whether an indicated piece can move in the indicated direction

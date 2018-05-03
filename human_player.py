@@ -178,14 +178,12 @@ class Player:
         r_val = None # return value
         turn_valid = False
         # know how many times board has shrunk
-        shrinks = 0
+        shrinks = player_functions.get_shrinks(turns)
         if int(turns/2) == 64:
             # 64 turns have passed for each player
-            shrinks = 1
             player_functions.shrink(self.board,shrinks)
         elif int(turns/2) == 96:
             # 96 turns have passed for each player
-            shrinks = 2
             player_functions.shrink(self.board,shrinks)
         while not turn_valid:
             # have the player attempt a move

@@ -123,42 +123,28 @@ class Player:
         :param turns: the number of turns which have passed so far
         :return: the move which occured, assuming one did
         """
-        #print("Turn " + str(turns + 1))
         r_val = None # return value
         # know how many times board has shrunk
-        shrinks = 0
+        shrinks = player_functions.get_shrinks(turns)
         if int(turns/2) == 64:
             # 64 turns have passed for each player
-            shrinks = 1
             player_functions.shrink(self.board,shrinks)
         elif int(turns/2) == 96:
             # 96 turns have passed for each player
-            shrinks = 2
             player_functions.shrink(self.board,shrinks)
-#        print('-'*32)
         if self.placed < 12:
             # placing phase
-#            print("Placing phase for " + self.colour + " player")
             r_val = self.place()
-#            print("Placement by " + self.colour + " at position (" +
-#                str(r_val[0]) + ", " + str(r_val[1]) + ")")
             self.placed += 1
         else:
             # moving phase
             # check if can do anything
             m = player_functions.moves_available(
                 self.board,self.my_piece,shrinks)
-#            print("Moving phase for " + self.colour + " player")
-#            print("Can make " + str(m) + " move(s)")
             if m == 0:
-#                print("Can't make any moves!")
                 r_val = None
             else:
                 r_val = self.move(shrinks)
-#                print("Moved from " + str(r_val[0]) + " to " +
-#                    str(r_val[1]))
-#        print('-'*32)
         player_functions.eliminate(self.board, self.op_piece, self.my_piece)
-        #player_functions.print_board(self.board)
         return r_val
 
