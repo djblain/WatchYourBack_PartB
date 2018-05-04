@@ -57,10 +57,11 @@ class Player:
         :param turns: the number of turns which have passed
         :return: the calculated score - a higher value means a 'better' outcome
         """
+        # yeah definitely still not happy with this :(
         a_old = 0 # allied pieces found on current board
         e_old = 0 # enemy pieces found on current board
         s = [0,8]
-        score = 0
+        score = 0.0
         # check if we're getting close to a shrink
         if turns >= 108:
             # near first shrink, highlight safe zone
@@ -76,18 +77,10 @@ class Player:
                     # allied piece found
                     a_old += 1
                     score -= 1
-                    if c not in range(s[0],s[1]) or r not in range(s[0],s[1]):
-                        # piece could get killed by shrink
-                        # treat as only worth "quarter" of a piece
-                        score += 0.75
                 elif self.board[c][r] == self.op_piece:
                     # enemy piece found
                     e_old += 1
                     score += 1
-                    if c not in range(s[0],s[1]) or r not in range(s[0],s[1]):
-                        # piece could get killed by shrink
-                        # treat as only worth "quarter" of a piece
-                        score -= 0.75
         a_new = 0 # allied pieces found on input board
         e_new = 0 # enemy pieces found on input board
         for c in range(8):
@@ -95,16 +88,20 @@ class Player:
                 if board[c][r] == self.my_piece:
                     # allied piece found
                     a_new += 1
+                    if player_functions.can_surround(board, r, c):
+                        score -= 0.5
                     score += 1
-                    if c not in range(s[0],s[1]) or r not in range(s[0],s[1]):
+                    if s[0] > c or c >= s[1] or s[0] > r or r >= s[1]:
                         # piece could get killed by shrink
                         # treat as only worth "quarter" of a piece
                         score -= 0.75
                 elif board[c][r] == self.op_piece:
                     # enemy piece found
                     e_new += 1
+                    if player_functions.can_surround(board, r, c):
+                        score += 0.5
                     score -= 1
-                    if c not in range(s[0],s[1]) or r not in range(s[0],s[1]):
+                    if s[0] > c or c >= s[1] or s[0] > r or r >= s[1]:
                         # piece could get killed by shrink
                         # treat as only worth "quarter" of a piece
                         score += 0.75
@@ -288,8 +285,10 @@ class Player:
             # basically avoid "quicker" loss
             # don't kamikaze, try to draw game out longer
             if b_score < -500:
-                print("Loss with depth: " + str(depth))
-            return b_score - depth*2
+                return b_score - depth*2
+            elif b_score > 500:
+                return b_score + depth*2
+            return b_score
         if my_turn:
             # maximising score
             if len(l_moves) > 0:
@@ -424,8 +423,8 @@ class Player:
                     n_board, self.op_piece, self.my_piece)
             n_score = self.move_next(
                 n_board, False, turns + 1, s_best, 10000, 1+shrinks*2)
-            if (n_score != 0):
-                print("Move " + str(m) + " has score: " + str(n_score))
+            #if (n_score != 0):
+            #    print("Move " + str(m) + " has score: " + str(n_score))
             if n_score > s_best:
                 # new best score, reset list of best moves and add this one
                 l_best = []

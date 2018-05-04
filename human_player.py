@@ -182,9 +182,11 @@ class Player:
         if int(turns/2) == 64:
             # 64 turns have passed for each player
             player_functions.shrink(self.board,shrinks)
+            player_functions.eliminate(self.board, self.op_piece, self.my_piece)
         elif int(turns/2) == 96:
             # 96 turns have passed for each player
             player_functions.shrink(self.board,shrinks)
+            player_functions.eliminate(self.board, self.op_piece, self.my_piece)
         while not turn_valid:
             # have the player attempt a move
             print('-'*32)
