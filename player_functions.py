@@ -351,12 +351,13 @@ def shrink(board, shrinks):
             # check if space now 'out of bounds'
             if r < s or c < s or r > 7-s or c > 7-s:
                 # replace with arbitrary symbol (not O, @, - or X)
-                board[c][r] = '='
+                board[c][r] = ':'
     # new corner locations
     n_corners = [[s,s],[s,7-s],[7-s,s],[7-s,7-s]]
     for n in n_corners:
         # place new corners
         board[n[1]][n[0]] = 'X'
+    return board
 
 def update(board, action, p_my, p_op):
     """
