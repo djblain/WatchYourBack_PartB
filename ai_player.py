@@ -11,7 +11,7 @@
 import player_functions
 from sys import exit
 import random # need this to handle randomness
-import time
+import time # timing the player for testing purposes
 
 class Player:
     """Class for a 'good' AI player which behaves intelligently"""
@@ -117,9 +117,9 @@ class Player:
         e_weight = 3
         #return (-a_weight*a_loss + e_weight*e_loss)
         #return (a_new*a_weight - e_new*e_weight) #- (a_old - e_old)*1.1
-        return score
+        #return score
         #return (a_new - a_old) + (e_old - e_new)
-        #return e_loss*1.1 - a_loss
+        return e_loss*1.1 - a_loss
 
     def place(self, turns):
         """
@@ -291,16 +291,16 @@ class Player:
                             n_board, m[1], m[0], shrinks, m[2]):
                         player_functions.piece_jump(n_board, m[1], m[0], m[2])
                     # eliminate pieces
-                    player_functions.eliminate(
+                    n_board = player_functions.eliminate(
                         n_board, self.op_piece, self.my_piece)
                     # shrink, if necessary
-                    if (turns+1) >= 128:
-                        player_functions.shrink(n_board, 1)
-                        player_functions.eliminate(
+                    if (turns+1) in [128,129]:
+                        n_board = player_functions.shrink(n_board, 1)
+                        n_board = player_functions.eliminate(
                             n_board, self.op_piece, self.my_piece)
-                    if (turns+1) >= 192:
-                        player_functions.shrink(n_board, 2)
-                        player_functions.eliminate(
+                    if (turns+1) in [192,193]:
+                        n_board = player_functions.shrink(n_board, 2)
+                        n_board = player_functions.eliminate(
                             n_board, self.op_piece, self.my_piece)
                     n_score = self.move_next(
                         n_board, False, turns + 1, a, b, depth-1)
@@ -315,13 +315,13 @@ class Player:
                 # player can't make a move
                 n_board = player_functions.board_duplicate(board)
                 # shrink, if necessary
-                if (turns+1) >= 128:
-                    player_functions.shrink(n_board, 1)
-                    player_functions.eliminate(
+                if (turns+1) in [128,129]:
+                    n_board = player_functions.shrink(n_board, 1)
+                    n_board = player_functions.eliminate(
                         n_board, self.op_piece, self.my_piece)
-                elif (turns+1) >= 192:
-                    player_functions.shrink(n_board, 2)
-                    player_functions.eliminate(
+                elif (turns+1) in [192,193]:
+                    n_board = player_functions.shrink(n_board, 2)
+                    n_board = player_functions.eliminate(
                         n_board, self.op_piece, self.my_piece)
                 return self.move_next(n_board, False, turns+1, a, b, depth-1)
         else:
@@ -338,16 +338,16 @@ class Player:
                             n_board, m[1], m[0], shrinks, m[2]):
                         player_functions.piece_jump(n_board, m[1], m[0], m[2])
                     # eliminate pieces
-                    player_functions.eliminate(
+                    n_board = player_functions.eliminate(
                         n_board, self.my_piece, self.op_piece)
                     # shrink, if necessary
-                    if (turns+1) >= 128:
-                        player_functions.shrink(n_board, 1)
-                        player_functions.eliminate(
+                    if (turns+1) in [128,129]:
+                        n_board = player_functions.shrink(n_board, 1)
+                        n_board = player_functions.eliminate(
                             n_board, self.my_piece, self.op_piece)
-                    elif (turns+1) >= 192:
-                        player_functions.shrink(n_board, 2)
-                        player_functions.eliminate(
+                    elif (turns+1) in [192,193]:
+                        n_board = player_functions.shrink(n_board, 2)
+                        n_board = player_functions.eliminate(
                             n_board, self.my_piece, self.op_piece)
                     n_score = self.move_next(
                         n_board, True, turns + 1, a, b, depth-1)
@@ -362,13 +362,13 @@ class Player:
                 # player can't make a move
                 n_board = player_functions.board_duplicate(board)
                 # shrink, if necessary
-                if (turns+1) >= 128:
-                    player_functions.shrink(n_board, 1)
-                    player_functions.eliminate(
+                if (turns+1) in [128,129]:
+                    n_board = player_functions.shrink(n_board, 1)
+                    n_board = player_functions.eliminate(
                         n_board, self.my_piece, self.op_piece)
-                elif (turns+1) >= 192:
-                    player_functions.shrink(n_board, 2)
-                    player_functions.eliminate(
+                elif (turns+1) in [192,193]:
+                    n_board = player_functions.shrink(n_board, 2)
+                    n_board = player_functions.eliminate(
                         n_board, self.my_piece, self.op_piece)
                 return self.move_next(n_board, True, turns+1, a, b, depth-1)
 
@@ -401,17 +401,19 @@ class Player:
             # eliminate pieces
             player_functions.eliminate(n_board, self.op_piece, self.my_piece)
             # shrink, if necessary
-            if turns+1 in [128, 129]:
+            if (turns+1) in [128,129]:
                 player_functions.shrink(n_board, 1)
                 player_functions.eliminate(
                     n_board, self.op_piece, self.my_piece)
-            elif turns+1 in [192, 193]:
+                print(n_board[0][0])
+            elif (turns+1) in [192,193]:
                 player_functions.shrink(n_board, 2)
                 player_functions.eliminate(
                     n_board, self.op_piece, self.my_piece)
+                print(n_board[1][1])
             n_score = self.move_next(
                 n_board, False, turns + 1, s_best, 10000,
-                1+2*shrinks)
+                1+4*shrinks)
             #if (n_score != 0):
             #    print("Move " + str(m) + " has score: " + str(n_score))
             if n_score > s_best:
@@ -491,7 +493,7 @@ class Player:
             if m == 0:
                 r_val = None
             else:
-                r_val = self.move(shrinks)
+                r_val = self.move(turns)
         player_functions.eliminate(self.board, self.op_piece, self.my_piece)
         self.time_passed += time.time() - t_start
         print("Time (" + self.colour + "): "

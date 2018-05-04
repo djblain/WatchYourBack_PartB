@@ -343,6 +343,7 @@ def shrink(board, shrinks):
 
     :param board: the board to shrink
     :param shrinks: the number of times to shrink
+    :return: the shrunken board
     """
     s = shrinks # short-hand
     for r in range(8):
