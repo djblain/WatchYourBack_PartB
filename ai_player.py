@@ -71,16 +71,18 @@ class Player:
             # near second shrink, highlight safe zone
             s = []
             s = [2,6]
+        if turns in [128,192]:
+            print(turns)
         for c in range(8):
             for r in range(8):
                 if self.board[c][r] == self.my_piece:
                     # allied piece found
                     a_old += 1
-                    score -= 1
+                    #score -= 1
                 elif self.board[c][r] == self.op_piece:
                     # enemy piece found
                     e_old += 1
-                    score += 1
+                    #score += 1
         a_new = 0 # allied pieces found on input board
         e_new = 0 # enemy pieces found on input board
         for c in range(8):
@@ -88,23 +90,13 @@ class Player:
                 if board[c][r] == self.my_piece:
                     # allied piece found
                     a_new += 1
-                    if player_functions.can_surround(board, r, c):
-                        score -= 0.5
-                    score += 1
-                    if s[0] > c or c >= s[1] or s[0] > r or r >= s[1]:
-                        # piece could get killed by shrink
-                        # treat as only worth "quarter" of a piece
-                        score -= 0.75
+                    if c in range(s[0],s[1]) and r in range(s[0],s[1]):
+                        score += 1.2
                 elif board[c][r] == self.op_piece:
                     # enemy piece found
                     e_new += 1
-                    if player_functions.can_surround(board, r, c):
-                        score += 0.5
-                    score -= 1
-                    if s[0] > c or c >= s[1] or s[0] > r or r >= s[1]:
-                        # piece could get killed by shrink
-                        # treat as only worth "quarter" of a piece
-                        score += 0.75
+                    if c in range(s[0],s[1]) and r in range(s[0],s[1]):
+                        score -= 1
         # differences
         a_loss = a_old - a_new
         e_loss = e_old - e_new
@@ -284,11 +276,7 @@ class Player:
         if depth == 0 or b_score not in range(-250,250):
             # basically avoid "quicker" loss
             # don't kamikaze, try to draw game out longer
-            if b_score < -500:
-                return b_score - depth*2
-            elif b_score > 500:
-                return b_score + depth*2
-            return b_score
+            return b_score + depth*2
         if my_turn:
             # maximising score
             if len(l_moves) > 0:
@@ -306,11 +294,11 @@ class Player:
                     player_functions.eliminate(
                         n_board, self.op_piece, self.my_piece)
                     # shrink, if necessary
-                    if (turns+1) in [128, 129]:
+                    if (turns+1) >= 128:
                         player_functions.shrink(n_board, 1)
                         player_functions.eliminate(
                             n_board, self.op_piece, self.my_piece)
-                    elif (turns+1) in [192, 193]:
+                    if (turns+1) >= 192:
                         player_functions.shrink(n_board, 2)
                         player_functions.eliminate(
                             n_board, self.op_piece, self.my_piece)
@@ -327,11 +315,11 @@ class Player:
                 # player can't make a move
                 n_board = player_functions.board_duplicate(board)
                 # shrink, if necessary
-                if (turns+1) in [128, 129]:
+                if (turns+1) >= 128:
                     player_functions.shrink(n_board, 1)
                     player_functions.eliminate(
                         n_board, self.op_piece, self.my_piece)
-                elif (turns+1) in [192, 193]:
+                elif (turns+1) >= 192:
                     player_functions.shrink(n_board, 2)
                     player_functions.eliminate(
                         n_board, self.op_piece, self.my_piece)
@@ -353,11 +341,11 @@ class Player:
                     player_functions.eliminate(
                         n_board, self.my_piece, self.op_piece)
                     # shrink, if necessary
-                    if (turns+1) in [128, 129]:
+                    if (turns+1) >= 128:
                         player_functions.shrink(n_board, 1)
                         player_functions.eliminate(
                             n_board, self.my_piece, self.op_piece)
-                    elif (turns+1) in [192, 193]:
+                    elif (turns+1) >= 192:
                         player_functions.shrink(n_board, 2)
                         player_functions.eliminate(
                             n_board, self.my_piece, self.op_piece)
@@ -374,11 +362,11 @@ class Player:
                 # player can't make a move
                 n_board = player_functions.board_duplicate(board)
                 # shrink, if necessary
-                if (turns+1) in [128, 129]:
+                if (turns+1) >= 128:
                     player_functions.shrink(n_board, 1)
                     player_functions.eliminate(
                         n_board, self.my_piece, self.op_piece)
-                elif (turns+1) in [192, 193]:
+                elif (turns+1) >= 192:
                     player_functions.shrink(n_board, 2)
                     player_functions.eliminate(
                         n_board, self.my_piece, self.op_piece)
@@ -422,7 +410,8 @@ class Player:
                 player_functions.eliminate(
                     n_board, self.op_piece, self.my_piece)
             n_score = self.move_next(
-                n_board, False, turns + 1, s_best, 10000, 1+shrinks*2)
+                n_board, False, turns + 1, s_best, 10000,
+                1+2*shrinks)
             #if (n_score != 0):
             #    print("Move " + str(m) + " has score: " + str(n_score))
             if n_score > s_best:
