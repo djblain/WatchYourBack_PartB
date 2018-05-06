@@ -12,6 +12,7 @@ import player_functions
 from sys import exit
 import random # need this to handle randomness
 import time # timing the player for testing purposes
+from math import pow # used to calculate max. depth of search
 
 class Player:
     """Class for a 'good' AI player which behaves intelligently"""
@@ -81,6 +82,14 @@ class Player:
                     # enemy piece found
                     e_old += 1
                     #score += 1
+        if a_old > e_old:
+            # prioritise attack
+            a_worth = 0.9
+        elif a_old < e_old:
+            # prioritise defense
+            a_worth = 1.1
+        else:
+            a_worth = 1.0
         a_new = 0 # allied pieces found on input board
         e_new = 0 # enemy pieces found on input board
         for c in range(8):
@@ -89,15 +98,15 @@ class Player:
                     # allied piece found
                     a_new += 1
                     if c in range(s[0],s[1]) and r in range(s[0],s[1]):
-                        score += 1.2
+                        score += a_worth
                 elif board[c][r] == self.op_piece:
                     # enemy piece found
                     e_new += 1
                     if c in range(s[0],s[1]) and r in range(s[0],s[1]):
                         score -= 1
         # differences
-        a_loss = a_old - a_new
-        e_loss = e_old - e_new
+        #a_loss = a_old - a_new
+        #e_loss = e_old - e_new
         # now do something with the found information
         if e_new <= 1 and a_new > 1:
             # win state, return an absurdly high value
@@ -105,14 +114,19 @@ class Player:
         if e_new > 1 and a_new <= 1:
             # lose state, return an absurdly low value
             #print("Loss state found!")
+            #self.print_board()
+            #tmp = self.board
+            #self.board = board
+            #self.print_board()
+            #self.board = tmp
             return -1000
         if e_new <= 1 and a_new <= 1:
             # draw state: undesirable, but better than a loss
             # return a low value, but not as low as a loss
             return -500
         # weighted 'worth' of allied and enemy pieces (multiplication factors)
-        a_weight = 5
-        e_weight = 3
+        #a_weight = 5
+        #e_weight = 3
         #return (-a_weight*a_loss + e_weight*e_loss)
         #return (a_new*a_weight - e_new*e_weight) #- (a_old - e_old)*1.1
         return score
@@ -252,7 +266,7 @@ class Player:
                     moves.append([l[0], l[1], d])
         return moves
 
-    def move_next(self, board, my_turn, turns, alpha, beta, depth):
+    def move_next(self, board, my_turn, turns, alpha, beta, depth, depth_max):
         """
         Using alpha-beta pruning, find the best move to make next
 
@@ -261,114 +275,74 @@ class Player:
         :param turns: how many turns into the moving phase we are
         :param alpha: the current minimum score for maximising player
         :param beta: the current maximum score for minimising player
-        :param depth: how many more moves ahead to check
+        :param depth: how deep the search is currently
+        :param depth_max: the maximum depth to search
+        :return: either alpha/beta if depth > 0, otherwise a list of best moves
         """
-        a = alpha
-        b = beta
+        a, b = alpha, beta
         shrinks = player_functions.get_shrinks(turns)
-        # calculate score of current board
-        b_score = self.evaluation(board, turns)
-        # get list of possible moves
+        n_shrinks = player_functions.get_shrinks(turns+1)
+        c_score = self.evaluation(board, turns)
+        if c_score <= -500:
+            # lose/draw state
+            return (c_score + depth)
+        if c_score > 500:
+            # win state
+            return (c_score - depth)
+        if depth == depth_max:
+            return c_score
         l_moves = self.moves_generate(board, my_turn, shrinks)
-        # check if terminal call
-        if depth == 0 or b_score not in range(-250,250):
-            # basically avoid "quicker" loss
-            # don't kamikaze, try to draw game out longer
-            return b_score + depth*2
+        # check that a move is possible
+        if len(l_moves) == 0:
+            # no moves possible
+            n_board = player_functions.board_duplicate(board)
+            # shrink and eliminate, if necessary
+            if n_shrinks != shrinks:
+                player_functions.shrink(n_board, n_shrinks)
+            n_score = self.move_next(n_board, not my_turn, turns+1, alpha,
+                beta, depth+1, depth_max)
+            n_board = None
+            return n_score
+        m_best = [] # list of best moves, return if depth == 0 instead of score
+        for m in l_moves:
+            n_board = player_functions.board_duplicate(board)
+            player_functions.move_perform(
+                n_board, m[1], m[0], shrinks, m[2])
+            if my_turn:
+                player_functions.eliminate(
+                    n_board, self.op_piece, self.my_piece)
+                if shrinks != n_shrinks:
+                    player_functions.shrink(n_board, n_shrinks)
+                s = self.move_next(
+                    n_board, False, turns+1, a, b, depth+1, depth_max)
+                if s > a:
+                    a = s
+                    m_best.clear()
+                    m_best.append(m)
+                    #if depth == 0:
+                    #    print(str(m) + " " + str(a))
+                elif s == a:
+                    m_best.append(m)
+                    #if depth == 0:
+                    #    print("Also: " + str(m))
+            else:
+                player_functions.eliminate(
+                    n_board, self.my_piece, self.op_piece)
+                if shrinks != n_shrinks:
+                    player_functions.shrink(n_board, n_shrinks)
+                s = self.move_next(
+                    n_board, True, turns+1, a, b, depth+1, depth_max)
+                #if depth == 1 and s < b:
+                #    print("New worst: " + str(s) + str(m))
+                b = min(s,b)
+            if b <= a:
+                break
+        if depth == 0:
+            return m_best
         if my_turn:
-            # maximising score
-            if len(l_moves) > 0:
-                s = -10000
-                for m in l_moves:
-                    n_board = player_functions.board_duplicate(board)
-                    # now make the move on a temp board
-                    if player_functions.can_move(
-                            n_board, m[1], m[0], shrinks, m[2]):
-                        player_functions.piece_move(n_board, m[1], m[0], m[2])
-                    elif player_functions.can_jump(
-                            n_board, m[1], m[0], shrinks, m[2]):
-                        player_functions.piece_jump(n_board, m[1], m[0], m[2])
-                    # eliminate pieces
-                    player_functions.eliminate(
-                        n_board, self.op_piece, self.my_piece)
-                    # shrink, if necessary
-                    if (turns+1) in [128,129]:
-                        player_functions.shrink(n_board, 1)
-                        player_functions.eliminate(
-                            n_board, self.op_piece, self.my_piece)
-                    if (turns+1) in [192,193]:
-                        player_functions.shrink(n_board, 2)
-                        player_functions.eliminate(
-                            n_board, self.op_piece, self.my_piece)
-                    n_score = self.move_next(
-                        n_board, False, turns + 1, a, b, depth-1)
-                    s = max(s, n_score)
-                    a = max(s, a)
-                    n_board = None # clear from memory
-                    if b <= a:
-                        #cut-off search
-                        break
-                return s
-            else:
-                # player can't make a move
-                n_board = player_functions.board_duplicate(board)
-                # shrink, if necessary
-                if (turns+1) in [128,129]:
-                    player_functions.shrink(n_board, 1)
-                    player_functions.eliminate(
-                        n_board, self.op_piece, self.my_piece)
-                elif (turns+1) in [192,193]:
-                    player_functions.shrink(n_board, 2)
-                    player_functions.eliminate(
-                        n_board, self.op_piece, self.my_piece)
-                return self.move_next(n_board, False, turns+1, a, b, depth-1)
+            return a
         else:
-            # minimising score
-            if len(l_moves) > 0:
-                s = 10000
-                for m in l_moves:
-                    n_board = player_functions.board_duplicate(board)
-                    # now make the move on a temp board
-                    if player_functions.can_move(
-                            n_board, m[1], m[0], shrinks, m[2]):
-                        player_functions.piece_move(n_board, m[1], m[0], m[2])
-                    elif player_functions.can_jump(
-                            n_board, m[1], m[0], shrinks, m[2]):
-                        player_functions.piece_jump(n_board, m[1], m[0], m[2])
-                    # eliminate pieces
-                    player_functions.eliminate(
-                        n_board, self.my_piece, self.op_piece)
-                    # shrink, if necessary
-                    if (turns+1) in [128,129]:
-                        player_functions.shrink(n_board, 1)
-                        player_functions.eliminate(
-                            n_board, self.my_piece, self.op_piece)
-                    elif (turns+1) in [192,193]:
-                        player_functions.shrink(n_board, 2)
-                        player_functions.eliminate(
-                            n_board, self.my_piece, self.op_piece)
-                    n_score = self.move_next(
-                        n_board, True, turns + 1, a, b, depth-1)
-                    s = min(s, n_score)
-                    b = min(s, b)
-                    n_board = None # clear from memory
-                    if b <= a:
-                        #cut-off search
-                        break
-                return s
-            else:
-                # player can't make a move
-                n_board = player_functions.board_duplicate(board)
-                # shrink, if necessary
-                if (turns+1) in [128,129]:
-                    player_functions.shrink(n_board, 1)
-                    player_functions.eliminate(
-                        n_board, self.my_piece, self.op_piece)
-                elif (turns+1) in [192,193]:
-                    player_functions.shrink(n_board, 2)
-                    player_functions.eliminate(
-                        n_board, self.my_piece, self.op_piece)
-                return self.move_next(n_board, True, turns+1, a, b, depth-1)
+            return b
 
     def move(self, turns):
         """
@@ -377,73 +351,37 @@ class Player:
         :param turns: the number of turns into the moving phase we are
         :return: a tuple of tuples for a valid move
         """
-        # starting score
-        s_begin = self.evaluation(self.board, turns)
-        # know how many shrinks have occured
         shrinks = player_functions.get_shrinks(turns)
-        # get a list of possible moves first
-        l_moves = self.moves_generate(self.board, True, shrinks)
-        #print("Can make " + str(len(l_moves)) + " moves!")
-        # current best score: update as we go
-        s_best = -10000
-        # list of current best moves
-        l_best = []
-        # TODO: implement
-        for m in l_moves:
-            n_board = player_functions.board_duplicate(self.board)
-            # now make the move on a temp board
-            if player_functions.can_move(n_board, m[1], m[0], shrinks, m[2]):
-                player_functions.piece_move(n_board, m[1], m[0], m[2])
-            elif player_functions.can_jump(n_board, m[1], m[0], shrinks, m[2]):
-                player_functions.piece_jump(n_board, m[1], m[0], m[2])
-            # eliminate pieces
-            player_functions.eliminate(n_board, self.op_piece, self.my_piece)
-            # shrink, if necessary
-            if (turns+1) in [128,129]:
-                player_functions.shrink(n_board, 1)
-                player_functions.eliminate(
-                    n_board, self.op_piece, self.my_piece)
-            elif (turns+1) in [192,193]:
-                player_functions.shrink(n_board, 2)
-                player_functions.eliminate(
-                    n_board, self.op_piece, self.my_piece)
-            n_score = self.move_next(
-                n_board, False, turns + 1, s_best, 10000,
-                2+2*shrinks)
-            #if (n_score != 0):
-            #    print("Move " + str(m) + " has score: " + str(n_score))
-            if n_score > s_best:
-                # new best score, reset list of best moves and add this one
-                l_best = []
-                l_best.append(m)
-                s_best = n_score
-            elif n_score == s_best:
-                # matches best score, another possible best move
-                l_best.append(m)
-            #else:
-            #    print("Disregard: " + str(m))
-            n_board = None # clear from memory
-        # pick a "best" move randomly
-        f_move = random.choice(l_best)
-        print("Best score: " + str(n_score))
-        if f_move is None:
+        n_moves = player_functions.moves_available(
+            self.board, self.my_piece, shrinks)
+        d_max = 1
+        t_max = 3000 # try to keep running time complexity below this
+        while d_max < 5 and pow(n_moves, d_max+1) <= t_max:
+            # we can go further, increase depth
+            d_max += 1
+        l_moves = self.move_next(
+            self.board, True, turns, -100000, 100000, 0, d_max)
+        if l_moves == None:
             return None
-        # do the move
-        if player_functions.can_move(
-                self.board, f_move[1], f_move[0], shrinks, f_move[2]):
-            n_pos = player_functions.piece_move(
-                self.board, f_move[1], f_move[0], f_move[2])
-        elif player_functions.can_jump(
-                self.board, f_move[1], f_move[0], shrinks, f_move[2]):
-            n_pos = player_functions.piece_jump(
-                self.board, f_move[1], f_move[0], f_move[2])
+        f_move = random.choice(l_moves)
+        s_best = -10000
+        for m in l_moves:
+            # try to do move which is best "immediately"
+            # select from list of "best" long-term moves
+            n_board = player_functions.board_duplicate(self.board)
+            player_functions.move_perform(n_board, m[1], m[0], shrinks, m[2])
+            player_functions.eliminate(n_board, self.op_piece, self.my_piece)
+            ns = self.evaluation(n_board, turns+1)
+            if ns > s_best:
+                # new better move
+                s_best = ns
+                f_move = m
+            elif ns == s_best:
+                # new equal best, choose randommly if we want to use
+                f_move = random.choice([f_move, m])
+        n_pos = player_functions.move_perform(
+            self.board, f_move[1], f_move[0], shrinks, f_move[2])
         player_functions.eliminate(self.board, self.op_piece, self.my_piece)
-        s_change = self.evaluation(self.board, turns) - s_begin
-        #print("Best moves: ")
-        #for m in l_best:
-        #    print(str(m))
-        #print("Going with: " + str(f_move))
-        #self.print_board()
         return ((f_move[0], f_move[1]), n_pos)
 
     def update(self, action):
@@ -454,9 +392,9 @@ class Player:
         """
         t_start = time.time()
         player_functions.update(
-            self.board,action, self.my_piece, self.op_piece)
+            self.board, action, self.my_piece, self.op_piece)
         self.time_passed += time.time() - t_start
-        print("Time (" + self.colour + "): " + str(self.time_passed) + " seconds")
+        #print("Time (" + self.colour + "): " + str(self.time_passed) + " seconds")
 
     def action(self, turns):
         """
@@ -470,16 +408,17 @@ class Player:
         r_val = None # return value
         # know how many times board has shrunk
         shrinks = player_functions.get_shrinks(turns)
-        if turns in [128, 129]:
+        if shrinks == 1:
             # 64 turns have passed for each player
             player_functions.shrink(self.board,shrinks)
-            player_functions.eliminate(self.board, self.my_piece, self.op_piece)
-        elif turns in [192, 193]:
+        elif shrinks == 2:
             # 96 turns have passed for each player
             player_functions.shrink(self.board,shrinks)
-            player_functions.eliminate(self.board, self.my_piece, self.op_piece)
+        player_functions.eliminate(self.board, self.my_piece, self.op_piece)
         if self.placed < 12:
+            # placing phase
             r_val = self.place(turns)
+            player_functions.eliminate(self.board, self.op_piece, self.my_piece)
             self.placed += 1
         else:
             # moving phase
@@ -490,9 +429,12 @@ class Player:
                 r_val = None
             else:
                 r_val = self.move(turns)
-        player_functions.eliminate(self.board, self.op_piece, self.my_piece)
+        n_shrinks = player_functions.get_shrinks(turns+1)
+        if n_shrinks != shrinks:
+            player_functions.shrink(self.board, n_shrinks)
+        #self.print_board()
         self.time_passed += time.time() - t_start
-        print("Time (" + self.colour + "): "
-            + str(self.time_passed) + " seconds")
+        #print("Time (" + self.colour + "): "
+        #    + str(self.time_passed) + " seconds")
         return r_val
 

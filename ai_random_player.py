@@ -148,5 +148,8 @@ class Player:
             else:
                 r_val = self.move(shrinks)
         player_functions.eliminate(self.board, self.op_piece, self.my_piece)
+        n_shrinks = player_functions.get_shrinks(turns+1)
+        if n_shrinks != shrinks:
+            player_functions.shrink(self.board, n_shrinks)
         return r_val
 

@@ -240,6 +240,24 @@ def piece_jump(board, row, col, direction):
         l = (col,row+2)
     return l # returns new position
 
+def move_perform(board, row, col, shrinks, direction):
+    """
+    Performs the desired move on the input board
+    Does not perform elimination or shrink
+
+    :param board: the board to perform the move on
+    :param row: the row of the piece to move
+    :param col: the column of the piece to move
+    :param shrinks: the number of shrinks that have occured
+    :param direction: the direction the piece is moving
+    :return: the new location, or None if move not possible
+    """
+    if can_move(board, row, col, shrinks, direction):
+        return piece_move(board, row, col, direction)
+    elif can_jump(board, row, col, shrinks, direction):
+        return piece_jump(board, row, col, direction)
+    return None
+
 def surrounded(board, row, col):
     """
     Checks if a piece is surrounded
@@ -357,6 +375,8 @@ def shrink(board, shrinks):
     for n in n_corners:
         # place new corners
         board[n[1]][n[0]] = 'X'
+    # eliminate, black gets eliminated first
+    eliminate(board, 'O', '@')
     return board
 
 def update(board, action, p_my, p_op):
@@ -376,13 +396,13 @@ def update(board, action, p_my, p_op):
         # a tuple of ints, so a piece was placed
         (y, x) = action
         board[y][x] = p_op
-        board = eliminate(board, p_my, p_op)
+        eliminate(board, p_my, p_op)
     else:
         # a tuple of tuples, so a piece was moved
         ((ya, xa), (yb, xb)) = action
         board[ya][xa] = '-'
         board[yb][xb] = p_op
-        board = eliminate(board, p_my, p_op)
+        eliminate(board, p_my, p_op)
     # updated!
     return board
 
