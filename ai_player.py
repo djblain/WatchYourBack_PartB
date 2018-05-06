@@ -99,11 +99,15 @@ class Player:
                     a_new += 1
                     if c in range(s[0],s[1]) and r in range(s[0],s[1]):
                         score += a_worth
+                        if player_functions.can_surround(board, r, c):
+                            score -= 0.5
                 elif board[c][r] == self.op_piece:
                     # enemy piece found
                     e_new += 1
                     if c in range(s[0],s[1]) and r in range(s[0],s[1]):
                         score -= 1
+                        if player_functions.can_surround(board, r, c):
+                            score += 0.5
         # differences
         #a_loss = a_old - a_new
         #e_loss = e_old - e_new
