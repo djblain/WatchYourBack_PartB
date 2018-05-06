@@ -63,6 +63,21 @@ def on_board(row, col, shrinks=None):
         return False # column invalid
     return True # position valid
 
+def pieces_count(board):
+    """
+    Returns the total number of pieces on the board
+
+    :param board: the board to check
+    :return: the number of pieces on the board
+    """
+    p_count = 0
+    p_set = ['O', '@']
+    for c in range(8):
+        for r in range(8):
+            if board[c][r] in p_set:
+                p_count += 1
+    return p_count
+
 def get_shrinks(turns):
     """
     Returns the number of shrinks which have occured so far

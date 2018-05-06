@@ -356,11 +356,13 @@ class Player:
         :return: a tuple of tuples for a valid move
         """
         shrinks = player_functions.get_shrinks(turns)
-        n_moves = player_functions.moves_available(
-            self.board, self.my_piece, shrinks)
-        d_max = 1
+        n_pieces = player_functions.pieces_count(self.board)
+        d_max = 2
         t_max = 3000 # try to keep running time complexity below this
-        while d_max < 5 and pow(n_moves, d_max+1) <= t_max:
+        # assume branching factor, b, equals average of total moves per team,
+        # assuming all pieces can be moved in all directions
+        # i.e. b = no. pieces * no. directions / no. teams = n_pieces*4/2
+        while d_max < 5 and pow(n_pieces*2, d_max+1) <= t_max:
             # we can go further, increase depth
             d_max += 1
         l_moves = self.move_next(
