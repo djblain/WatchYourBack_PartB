@@ -370,6 +370,23 @@ def eliminate(board, e_first, e_second):
     # done eliminating
     return board
 
+def corner_eliminate(board, corner):
+    """
+    Eliminate pieces now surrounded due to a corner
+
+    :param board: the board to check
+    :param corner: the co-ordinates of the corner
+    :return: the updated board state
+    """
+    l_locations = [[-1,0],[1,0],[0,1],[0,-1]]
+    for l in l_locations:
+        dr = l[1] + corner[1]
+        dc = l[0] + corner[0]
+        if on_board(dr, dc):
+            if surrounded(board, dr, dc):
+                board[dc][dr] = '-'
+    return board
+
 def shrink(board, shrinks):
     """
     Shrink the input game board
@@ -386,12 +403,11 @@ def shrink(board, shrinks):
                 # replace with arbitrary symbol (not O, @, - or X)
                 board[c][r] = ':'
     # new corner locations
-    n_corners = [[s,s],[s,7-s],[7-s,s],[7-s,7-s]]
+    n_corners = [[s,s],[s,7-s],[7-s,7-s],[7-s,s]]
     for n in n_corners:
         # place new corners
         board[n[1]][n[0]] = 'X'
-    # eliminate, black gets eliminated first
-    eliminate(board, 'O', '@')
+        corner_eliminate(board, n)
     return board
 
 def update(board, action, p_my, p_op):

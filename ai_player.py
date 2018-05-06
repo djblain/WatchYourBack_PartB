@@ -440,7 +440,7 @@ class Player:
             player_functions.shrink(self.board, n_shrinks)
         #self.print_board()
         self.time_passed += time.time() - t_start
-        #print("Time (" + self.colour + "): "
-        #    + str(self.time_passed) + " seconds")
+        print("Time (" + self.colour + "): "
+            + str(self.time_passed) + " seconds")
         return r_val
 
