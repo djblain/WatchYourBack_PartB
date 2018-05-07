@@ -165,8 +165,8 @@ class Player:
                     p = player_functions.can_surround(self.board, r, c)
                     if p is not None:
                         # first check whether we could defend by attacking
-                        dx = 2*p[0]-c
-                        dy = 2*p[1]-r
+                        dx = 2*c-p[0]
+                        dy = 2*r-p[1]
                         if (player_functions.on_board(dy,dx)
                                 and dx in range(r_min, r_max)):
                             if self.board[dx][dy] == '-':
