@@ -403,7 +403,7 @@ def shrink(board, shrinks):
                 # replace with arbitrary symbol (not O, @, - or X)
                 board[c][r] = ':'
     # new corner locations
-    n_corners = [[s,s],[s,7-s],[7-s,7-s],[7-s,s]]
+    n_corners = [[s,s],[7-s,s],[7-s,7-s],[s,7-s]]
     for n in n_corners:
         # place new corners
         board[n[1]][n[0]] = 'X'
