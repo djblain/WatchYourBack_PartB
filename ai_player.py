@@ -164,6 +164,18 @@ class Player:
                     # one of our pieces found
                     p = player_functions.can_surround(self.board, r, c)
                     if p is not None:
+                        # first check whether we could defend by attacking
+                        dx = 2*p[0]-c
+                        dy = 2*p[1]-r
+                        if (player_functions.on_board(dy,dx)
+                                and dx in range(r_min, r_max)):
+                            if self.board[dx][dy] == '-':
+                                self.board[dx][dy] = self.my_piece
+                                if player_functions.can_surround(
+                                        self.board, dy, dx) is not None:
+                                    self.board[dx][dy] = '-'
+                                else:
+                                    return (dx, dy)
                         if (p[1] in range(r_min, r_max)
                                 and self.board[p[0]][p[1]] == '-'):
                             # could get surrounded, but can defend
@@ -216,9 +228,13 @@ class Player:
                             self.board[nc][nr] = '-'
                             l_avoid.append([nc,nr])
                         else:
-                            # safe for us, allow placement
-                            #print("Placing to attack!")
-                            return (nc, nr)
+                            # check if we actually threaten the piece
+                            if player_functions.can_surround(
+                                    self.board, e[1], e[0]) is not None:
+                                return (nc, nr)
+                            else:
+                                self.board[nc][nr] = '-'
+                                l_avoid.append([nc,nr])
         # place piece
         # just randomly use a safe position
         if self.colour == 'white':
