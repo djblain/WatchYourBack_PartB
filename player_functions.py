@@ -380,8 +380,8 @@ def corner_eliminate(board, corner):
     """
     l_locations = [[-1,0],[1,0],[0,1],[0,-1]]
     for l in l_locations:
-        dr = l[1] + corner[1]
-        dc = l[0] + corner[0]
+        dr = l[0] + corner[0]
+        dc = l[1] + corner[1]
         if on_board(dr, dc):
             if surrounded(board, dr, dc):
                 board[dc][dr] = '-'
@@ -401,7 +401,7 @@ def shrink(board, shrinks):
             # check if space now 'out of bounds'
             if r < s or c < s or r > 7-s or c > 7-s:
                 # replace with arbitrary symbol (not O, @, - or X)
-                board[c][r] = ':'
+                board[c][r] = ' '
     # new corner locations
     n_corners = [[s,s],[7-s,s],[7-s,7-s],[s,7-s]]
     for n in n_corners:
