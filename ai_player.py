@@ -144,8 +144,8 @@ class Player:
         :param turns: the number of turns that have occured
         :return: a tuple if valid placement occurs, None otherwise
         """
-        i_r = 0
-        i_c = 0
+        i_r = 4
+        i_c = 4
         # know range of placeable rows
         r_max = 8
         r_min = 0
@@ -232,8 +232,10 @@ class Player:
         a_attempts = 0
         while ((self.board[i_c][i_r] != '-' or i_r not in range(r_min, r_max))
                 or ([i_c,i_r] in l_avoid and a_attempts < 10)):
-            i_c = random.randrange(0, 8)
-            i_r = random.randrange(r_min, r_max)
+            # bias placement towards center of board
+            i_c = random.randrange(max(0,3-a_attempts), min(8,5+a_attempts))
+            i_r = random.randrange(
+                max(r_min,3-a_attempts), min(r_max,5+a_attempts))
             a_attempts += 1
         self.board[i_c][i_r] = self.my_piece
         return (i_c, i_r)
@@ -440,7 +442,7 @@ class Player:
             player_functions.shrink(self.board, n_shrinks)
         #self.print_board()
         self.time_passed += time.time() - t_start
-        print("Time (" + self.colour + "): "
-            + str(self.time_passed) + " seconds")
+        #print("Time (" + self.colour + "): "
+        #    + str(self.time_passed) + " seconds")
         return r_val
 
