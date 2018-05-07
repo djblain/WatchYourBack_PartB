@@ -360,7 +360,7 @@ class Player:
         shrinks = player_functions.get_shrinks(turns)
         n_pieces = player_functions.pieces_count(self.board)
         d_max = 2
-        t_max = 5000 # try to keep running time complexity below this
+        t_max = 10000 # try to keep running time complexity below this
         # assume branching factor, b, equals average of total moves per team,
         # assuming all pieces can be moved in all directions
         # i.e. b = no. pieces * no. directions / no. teams = n_pieces*4/2
