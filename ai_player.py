@@ -399,13 +399,17 @@ class Player:
         :return: a tuple of tuples for a valid move
         """
         shrinks = player_functions.get_shrinks(turns)
-        n_pieces = player_functions.pieces_count(self.board)
+        #n_pieces = player_functions.pieces_count(self.board)
+        my_moves = player_functions.moves_available(
+            self.board, self.my_piece, shrinks)
+        op_moves = player_functions.moves_available(
+            self.board, self.op_piece, shrinks)
+        # average branching factor between the two teams
+        b_factor = int((my_moves+op_moves)/2)
         d_max = 2
-        t_max = 10000 # try to keep running time complexity below this
-        # assume branching factor, b, equals average of total moves per team,
-        # assuming all pieces can be moved in all directions
-        # i.e. b = no. pieces * no. directions / no. teams = n_pieces*4/2
-        while d_max < 8 and pow(n_pieces*2, d_max+2) <= t_max:
+        t_max = 8000 # try to keep running time complexity below this
+        # assume branching factor, b_factor, is average of total moves per team
+        while d_max < 8 and pow(b_factor, d_max+2) <= t_max:
             # we can go further, increase depth
             d_max += 2
         l_moves = []
