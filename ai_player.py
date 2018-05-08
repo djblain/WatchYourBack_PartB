@@ -84,12 +84,13 @@ class Player:
                     #score += 1
         if a_old > e_old:
             # prioritise attack
-            a_worth = 0.9
+            a_worth = 9
         elif a_old < e_old:
             # prioritise defense
-            a_worth = 1.1
+            a_worth = 13
         else:
-            a_worth = 1.0
+            # slightly prioritise defense
+            a_worth = 11
         a_new = 0 # allied pieces found on input board
         e_new = 0 # enemy pieces found on input board
         for c in range(8):
@@ -98,23 +99,30 @@ class Player:
                     # allied piece found
                     a_new += 1
                     if c in range(s[0],s[1]) and r in range(s[0],s[1]):
-                        score += a_worth
+                        # weight score by distance from center
+                        # use (3.5, 3.5) as centre
+                        dist = int(max(abs(3.5-c), abs(3.5-r))-0.5)
+                        score += a_worth-dist
                         if player_functions.can_surround(board, r, c):
-                            score -= 0.5
+                            score -= int((a_worth-dist)/2)
                 elif board[c][r] == self.op_piece:
                     # enemy piece found
                     e_new += 1
                     if c in range(s[0],s[1]) and r in range(s[0],s[1]):
-                        score -= 1
+                        # weight score by distance from center
+                        # use (3.5, 3.5) as centre
+                        dist = int(max(abs(3.5-c), abs(3.5-r))-0.5)
+                        score -= 10-dist
                         if player_functions.can_surround(board, r, c):
-                            score += 0.5
+                            score += int((10-dist)/2)
         # differences
         #a_loss = a_old - a_new
         #e_loss = e_old - e_new
         # now do something with the found information
         if e_new <= 1 and a_new > 1:
             # win state, return an absurdly high value
-            return 1000
+            #print("Win state found!")
+            return 5000
         if e_new > 1 and a_new <= 1:
             # lose state, return an absurdly low value
             #print("Loss state found!")
@@ -123,11 +131,11 @@ class Player:
             #self.board = board
             #self.print_board()
             #self.board = tmp
-            return -1000
+            return -5000
         if e_new <= 1 and a_new <= 1:
             # draw state: undesirable, but better than a loss
             # return a low value, but not as low as a loss
-            return -500
+            return -2500
         # weighted 'worth' of allied and enemy pieces (multiplication factors)
         #a_weight = 5
         #e_weight = 3
@@ -135,7 +143,7 @@ class Player:
         #return (a_new*a_weight - e_new*e_weight) #- (a_old - e_old)*1.1
         return score
         #return (a_new - a_old) + (e_old - e_new)
-        #return e_loss*1.1 - a_loss
+        #return e_loss - a_loss * a_worth
 
     def place(self, turns):
         """
@@ -330,11 +338,13 @@ class Player:
         shrinks = player_functions.get_shrinks(turns)
         n_shrinks = player_functions.get_shrinks(turns+1)
         c_score = self.evaluation(board, turns)
-        if c_score <= -500:
+        if c_score <= -2500:
             # lose/draw state
             return (c_score + depth)
-        if c_score > 500:
+        if c_score > 2500:
             # win state
+            #if depth == 1:
+            #    print("About to win!!!")
             return (c_score - depth)
         if depth == depth_max:
             return c_score
@@ -346,8 +356,8 @@ class Player:
             # shrink and eliminate, if necessary
             if n_shrinks != shrinks:
                 player_functions.shrink(n_board, n_shrinks)
-            n_score = self.move_next(n_board, not my_turn, turns+1, alpha,
-                beta, depth+1, depth_max)
+            n_score = self.move_next(n_board, not my_turn, turns+1, a, b,
+                depth+1, depth_max)
             n_board = None
             return n_score
         m_best = [] # list of best moves, return if depth == 0 instead of score
@@ -367,7 +377,7 @@ class Player:
                     m_best.clear()
                     m_best.append(m)
                     #if depth == 0:
-                    #    print(str(m) + " " + str(a))
+                    #    print(str(m_best) + " " + str(a))
                 elif s == a:
                     m_best.append(m)
                     #if depth == 0:
@@ -405,13 +415,15 @@ class Player:
         op_moves = player_functions.moves_available(
             self.board, self.op_piece, shrinks)
         # average branching factor between the two teams
-        b_factor = int((my_moves+op_moves)/2)
+        b_factor = int((my_moves+op_moves)/2+0.5)
         d_max = 2
-        t_max = 8000 # try to keep running time complexity below this
+        t_max = 12000 # try to keep running time complexity below this
+        # lower allowed running time based on how long has passed in the game
+        t_max = max(int(t_max - self.time_passed*50), 2000)
         # assume branching factor, b_factor, is average of total moves per team
-        while d_max < 8 and pow(b_factor, d_max+2) <= t_max:
+        while d_max < min(b_factor, 8) and pow(b_factor, d_max+1) <= t_max:
             # we can go further, increase depth
-            d_max += 2
+            d_max += 1
         l_moves = []
         l_moves = self.move_next(
             self.board, True, turns, -100000, 100000, 0, d_max)
@@ -420,19 +432,20 @@ class Player:
         s_best = -10000
         l_moves2 = []
         if d_max > 2:
-            # best moves only considering next two turns (one per player)
+            # best moves only considering next two turns (i.e. one per player)
             l_moves2 = self.move_next(
-                self.board, True, turns, -100000, 100000, 0, d_max)
+                self.board, True, turns, -100000, 100000, 0, 2)
         l_remove = []
+        f_move = random.choice(l_moves)
         if len(l_moves2) > 0:
             for m in l_moves:
                 # try to do move which is best "immediately"
                 # select from list of "best" long-term moves
                 if m not in l_moves2:
                     l_remove.append(m)
-            for m in l_remove:
-                l_moves.remove(m)
-        f_move = random.choice(l_moves)
+            if len(l_remove) < len(l_moves):
+                while f_move in l_remove:
+                    f_move = random.choice(l_moves)
         n_pos = player_functions.move_perform(
             self.board, f_move[1], f_move[0], shrinks, f_move[2])
         player_functions.eliminate(self.board, self.op_piece, self.my_piece)
