@@ -64,11 +64,11 @@ class Player:
         s = [0,8]
         score = 0
         # check if we're getting close to a shrink
-        if turns >= 108:
+        if turns >= 118:
             # near first shrink, highlight safe zone
             s = []
             s = [1,7]
-        if turns >= 172:
+        if turns >= 182:
             # near second shrink, highlight safe zone
             s = []
             s = [2,6]
