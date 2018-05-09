@@ -62,7 +62,7 @@ class Player:
         a_old = 0 # allied pieces found on current board
         e_old = 0 # enemy pieces found on current board
         s = [0,8]
-        score = 0.0
+        score = 0
         # check if we're getting close to a shrink
         if turns >= 108:
             # near first shrink, highlight safe zone
@@ -77,11 +77,17 @@ class Player:
                 if self.board[c][r] == self.my_piece:
                     # allied piece found
                     a_old += 1
-                    #score -= 1
+                    # weight score by distance from center
+                    # use (3.5, 3.5) as centre
+                    dist = int(abs(3.5-c) + abs(3.5-r)-1)
+                    score -= 10-dist
                 elif self.board[c][r] == self.op_piece:
                     # enemy piece found
                     e_old += 1
-                    #score += 1
+                    # weight score by distance from center
+                    # use (3.5, 3.5) as centre
+                    dist = int(abs(3.5-c) + abs(3.5-r)-1)
+                    score += 10-dist
         if a_old > e_old:
             # prioritise attack
             a_worth = 9
@@ -101,20 +107,22 @@ class Player:
                     if c in range(s[0],s[1]) and r in range(s[0],s[1]):
                         # weight score by distance from center
                         # use (3.5, 3.5) as centre
-                        dist = int(max(abs(3.5-c), abs(3.5-r))-0.5)
+                        dist = int(abs(3.5-c) + abs(3.5-r)-1)
                         score += a_worth-dist
-                        if player_functions.can_surround(board, r, c):
-                            score -= int((a_worth-dist)/2)
+                        l = player_functions.can_surround(board, r, c)
+                        if l is not None:
+                            if player_functions.piece_adjacent(
+                                    board, l[1], l[0], self.op_piece):
+                                score -= a_worth-dist
                 elif board[c][r] == self.op_piece:
                     # enemy piece found
                     e_new += 1
-                    if c in range(s[0],s[1]) and r in range(s[0],s[1]):
-                        # weight score by distance from center
-                        # use (3.5, 3.5) as centre
-                        dist = int(max(abs(3.5-c), abs(3.5-r))-0.5)
-                        score -= 10-dist
-                        if player_functions.can_surround(board, r, c):
-                            score += int((10-dist)/2)
+                    score -= 10
+                    l = player_functions.can_surround(board, r, c)
+                    if l is not None:
+                        if player_functions.piece_adjacent(
+                                board, l[1], l[0], self.my_piece):
+                            score += 5
         # differences
         #a_loss = a_old - a_new
         #e_loss = e_old - e_new
@@ -284,7 +292,7 @@ class Player:
             i_c = random.randrange(
                 max(0,3-int(a_attempts/2)), min(8,5+int(a_attempts/2)))
             i_r = random.randrange(
-                max(r_min,3-a_attempts), min(r_max,5+a_attempts))
+                max(r_min,3-int(a_attempts/2)), min(r_max,5+int(a_attempts/2)))
             a_attempts += 1
         self.board[i_c][i_r] = self.my_piece
         return (i_c, i_r)
@@ -395,6 +403,7 @@ class Player:
             if b <= a:
                 break
         if depth == 0:
+            #print("Best: " + str(m) + " / " +str(a))
             return m_best
         if my_turn:
             return a
@@ -417,13 +426,13 @@ class Player:
         # average branching factor between the two teams
         b_factor = int((my_moves+op_moves)/2+0.5)
         d_max = 2
-        t_max = 12000 # try to keep running time complexity below this
+        t_max = 15000 # try to keep running time complexity below this
         # lower allowed running time based on how long has passed in the game
-        t_max = max(int(t_max - self.time_passed*50), 2000)
+        t_max = max(int(t_max - self.time_passed*50), 3000)
         # assume branching factor, b_factor, is average of total moves per team
-        while d_max < min(b_factor, 8) and pow(b_factor, d_max+1) <= t_max:
+        while d_max < min(b_factor, 8) and pow(b_factor, d_max+2) <= t_max:
             # we can go further, increase depth
-            d_max += 1
+            d_max += 2
         l_moves = []
         l_moves = self.move_next(
             self.board, True, turns, -100000, 100000, 0, d_max)

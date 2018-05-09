@@ -273,6 +273,25 @@ def move_perform(board, row, col, shrinks, direction):
         return piece_jump(board, row, col, direction)
     return None
 
+def piece_adjacent(board, row, col, piece):
+    """
+    Determines whether there is a specified piece adjacent to a specified place
+
+    :param board: the board to check
+    :param row: the row to check
+    :param col: the column to check
+    :param piece: the type of piece to check for
+    :return: True if the indicated piece type is adjacent, False otherwise
+    """
+    l_adjacent = [[-1,0],[1,0],[0,1],[0,-1]]
+    for l in l_adjacent:
+        dr = row + l[1]
+        dc = col + l[0]
+        if on_board(dr,dc):
+            if board[dc][dr] == piece:
+                return True
+    return False
+
 def surrounded(board, row, col):
     """
     Checks if a piece is surrounded
