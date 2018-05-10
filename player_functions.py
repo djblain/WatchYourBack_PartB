@@ -292,6 +292,33 @@ def piece_adjacent(board, row, col, piece):
                 return True
     return False
 
+def piece_jumpto(board, row, col, piece):
+    """
+    Determines whether an indicated piece can jump to the indicated position
+
+    :param board: the board to check
+    :param row: the row to check
+    :param col: the column to check
+    :param piece: the type of piece to check for
+    :return: True if the indicated piece type can jump here, False otherwise
+    """
+    if board[col][row] == '-':
+        # piece couldn't go here anyway
+        return False
+    l_adjacent = [[-1,0],[1,0],[0,1],[0,-1]]
+    for l in l_adjacent:
+        dr = row + l[1]
+        dc = col + l[0]
+        if on_board(dr,dc):
+            if board[dc][dr] in ('O', '@'):
+                # a piece to jump over
+                dr += l[1]
+                dc += l[0]
+                if on_board(dr,dc):
+                    if board[dc][dr] == piece:
+                        return True
+    return False
+
 def surrounded(board, row, col):
     """
     Checks if a piece is surrounded
@@ -324,6 +351,76 @@ def surrounded(board, row, col):
     # not surrounded
     return False
 
+def can_surround_vert(board, row, col):
+    """
+    Determines whether a piece could become surrounded vertically
+
+    :param board: the board to check
+    :param row: the row of the piece
+    :param col: the column of the piece
+    :return: a position the opponent could use to surround, or None if no such
+        position is found
+    """
+    p = board[col][row] # piece to check
+    if p not in ['O', '@']:
+        return None
+    if p == 'O':
+        e = ['@', 'X'] # hazards for white
+    else:
+        e = ['O', 'X'] # hazards for black
+    l_adjacent = [-1,1] # relative adjacent locations
+    for l in l_adjacent:
+        nc = col
+        nr = l + row
+        if on_board(nr, nc):
+            # position is valid
+            if board[nc][nr] in e:
+                # enemy adjacent, check opposite side
+                co = col
+                ro = row - l
+                if on_board(ro, co):
+                    # opposite square valid
+                    if board[co][ro] == '-':
+                        # space available
+                        return (co, ro)
+    # cannot get surrounded here
+    return None
+
+def can_surround_hori(board, row, col):
+    """
+    Determines whether a piece could become surrounded horizontally
+
+    :param board: the board to check
+    :param row: the row of the piece
+    :param col: the column of the piece
+    :return: a position the opponent could use to surround, or None if no such
+        position is found
+    """
+    p = board[col][row] # piece to check
+    if p not in ['O', '@']:
+        return None
+    if p == 'O':
+        e = ['@', 'X'] # hazards for white
+    else:
+        e = ['O', 'X'] # hazards for black
+    l_adjacent = [-1,1] # relative adjacent locations
+    for l in l_adjacent:
+        nc = col + l
+        nr = row
+        if on_board(nr, nc):
+            # position is valid
+            if board[nc][nr] in e:
+                # enemy adjacent, check opposite side
+                co = col - l
+                ro = row
+                if on_board(ro, co):
+                    # opposite square valid
+                    if board[co][ro] == '-':
+                        # space available
+                        return (co, ro)
+    # cannot get surrounded here
+    return None
+
 def can_surround(board, row, col):
     """
     Determines whether a piece could become surrounded
@@ -355,8 +452,8 @@ def can_surround(board, row, col):
                 ro = row - l[1]
                 if on_board(ro, co):
                     # opposite square valid
-                    if board[co][ro] != p:
-                        # not protected by ally
+                    if board[co][ro] == '-':
+                        # space available
                         return (co, ro)
     # cannot get surrounded here
     return None
