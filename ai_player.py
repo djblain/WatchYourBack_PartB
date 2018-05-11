@@ -138,6 +138,8 @@ class Player:
         if turns in range(100, 128) or turns in range(176, 192):
             val *= 10
             val += t_enemies
+        elif turns == -1:
+            val += t_enemies*2
         else:
             val += 10*t_enemies
         # check for friendly neighbouring pieces, or edges
@@ -198,7 +200,7 @@ class Player:
         # 'blur' score by opponent optimality
         # the more unpredictable the opponent, the more we should blur
         # apparant score "goodness"
-        blur = int(8-7*self.op_optimal)
+        blur = int(5-4*self.op_optimal)
         score = int(score/blur + 0.5) * blur
         return score
 
@@ -460,7 +462,7 @@ class Player:
         # approx. average branching factor between the two teams
         #b_factor = int((my_moves+op_moves)/2+1.5)
         d_max = 2
-        t_max = 9000 # try to keep running time complexity below this
+        t_max = 1200 # try to keep running time complexity below this
         # lower allowed running time based on how long has passed in the game
         t_max = max(int(t_max - self.time_passed*80), 3000)
         # assume branching factor, b_factor, is average of total moves per team
