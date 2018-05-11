@@ -134,8 +134,9 @@ class Player:
         # the closer a piece is to the center, the more it's worth
         val = 9 - int(abs(3.5-row)) - int(abs(3.5-col))
         # if we're near a shrink, proximity to center more important
-        # than being threatening
-        if turns in range(100, 128) or turns in range(176, 192):
+        # than being threatening. Also value proximity if we're not a threat
+        if (t_enemies == 0 and turns >= 0) or (turns in range(100, 128)
+                or turns in range(176, 192)):
             val *= 10
             val += t_enemies
         else:
@@ -185,7 +186,7 @@ class Player:
         # 'blur' score by opponent optimality
         # the more unpredictable the opponent, the more we should blur
         # apparant score "goodness"
-        blur = int(5-4*self.op_optimal)
+        blur = int(10-9*self.op_optimal)
         score = int(score/blur + 0.5) * blur
         return score
 
@@ -443,10 +444,16 @@ class Player:
             self.board, self.my_piece, shrinks)
         op_moves = player_functions.moves_available(
             self.board, self.op_piece, shrinks)
+        # average time to make a move
+        if turns > 1:
+            t_average = max(self.time_passed/int(turns/2), 0.05)
+        else:
+            t_average = 0.2 # one-fifth second (default for first move)
+        # assume
         d_max = 2
         t_max = 20000 # try to keep running time complexity below this
         # lower allowed running time based on how long has passed in the game
-        t_max = max(int(t_max - self.time_passed*80), 3000)
+        t_max = max(t_max * 0.1/t_average, 3000)
         # assume branching factor, b_factor, is average of total moves per team
         while d_max < 8 and (pow(my_moves, int((d_max+2)/2+0.5))
                 * pow(op_moves, int((d_max+2)/2)) <= t_max):

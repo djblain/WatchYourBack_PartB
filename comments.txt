@@ -2,4 +2,48 @@
 # Project Part B, Semester 1 2018
 # Watch Your Back! Game-playing Agent
 # Anjana Reddy Basani and Daniel Blain (Team B.A.R.D)
-#
+
+# Structure:
+The AI player is its own module, but uses extra functions from a separate module
+called "player_functions.py". This additional module contains a variety of
+functions for automatically controlling and updating a player's internal board
+state, so it can be used for other kinds of players (e.g. alternate AI
+implementations or human players).
+Additionally, the AI player uses functions from Python's math, time and random
+modules. Math is used for a couple of additional functions not available through
+standard Python syntax (e.g. square root, non-integer power); time lets the
+player track its own run-time, and random provides pseudo-random elements
+to the player's decision making, if it finds more than one optimal move
+
+# Search Strategy
+The AI player uses an implementation of the minimax game-playing algorithm,
+with Alpha-Beta pruning applied to decrease run-time. In addition, it chooses
+an order of evaluating moves in the search: during the placing phase, it will
+evaluate places starting from the player's unique starting zone (e.g. from the
+top for white, and vice versa for black), and during the moving phase, it looks
+at moving pieces which are the closest to enemies first. Additionally, by
+keeping track of its own runtime, the AI player can adjust the depth of its
+search to keep it under a specified limit, based on its average move time,
+and (ideally) prevent it from running overtime.
+
+# Evaluation function
+The evaluation function grades a board state primarily on the difference between
+the number of pieces each player has - the more pieces over an enemy, the higher
+the resulting score. In addition, it can grade the board by how many pieces are
+in danger of being taken, as well as how close the pieces are to the center.
+Usually, it values the former over the latter, but this is reversed when the
+board is approaching a shrink or a piece is not considered a threat, so that the
+player moves pieces towards the center.
+
+# Variance in Optimality of Opponent
+The AI player also supports a method of keeping track of the optimality of its
+opponent, as a value from 0 to 1 (where 1 = optimal). If it detects that the
+opponent is playing sub-optimally (i.e. the board state after the opponent's
+move gives a higher score than the predicted average), it will itself begin to
+play slightly sub-optimally, by "blurring" the score it evaluates for a board,
+hence increasing its own unpredictability in an effort to counter any unexpected
+benefits the opponent may gain from this.
+
+# Other details
+The file to test is ai_player.py
+It must be in the same folder as player_functions.py to function, however
