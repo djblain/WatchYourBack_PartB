@@ -13,7 +13,6 @@ from sys import exit
 import random # need this to handle randomness
 import time # timing the player for testing purposes
 from math import pow # used to calculate max. depth of search
-from math import sqrt # used to calculate distance from center of board
 
 class Player:
     """Class for a 'good' AI player which behaves intelligently"""
