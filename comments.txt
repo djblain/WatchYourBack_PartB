@@ -19,7 +19,8 @@ to the player's decision making, if it finds more than one optimal move
 The AI player uses an implementation of the minimax game-playing algorithm,
 with Alpha-Beta pruning applied to decrease run-time. In addition, it chooses
 an order of evaluating moves in the search: during the placing phase, it will
-evaluate places starting from the player's unique starting zone (e.g. from the
+evaluate piece placement starting from around the center (just so it is on the
+player's side of the board) and oscillate (e.g. from the
 top for white, and vice versa for black), and during the moving phase, it looks
 at moving pieces which are the closest to enemies first. Additionally, by
 keeping track of its own runtime, the AI player can adjust the depth of its

@@ -136,7 +136,7 @@ class Player:
         # than being threatening. Also value proximity if we're not a threat
         if (t_enemies == 0 and turns >= 0) or (turns in range(100, 128)
                 or turns in range(176, 192)):
-            val *= 10
+            val *= 5
             val += t_enemies
         else:
             val += 10*t_enemies
@@ -168,7 +168,7 @@ class Player:
         # most important: having more pieces than opponent
         # doesn't really matter how many more/less pieces we have
         # if we're far enough ahead/behind
-        score += (allies - enemies)*100
+        score += (allies - enemies)*200
         score += a_score - e_score
         # during moving phase, check for end-game state
         if turns >= 0:
@@ -218,13 +218,13 @@ class Player:
         a_place = [] # list of placees to put pieces
         for c in range(8):
             if r_min == 2:
-                # black player, start from bottom
-                for r in range(7, r_min-1, -1):
+                # black player
+                for r in [4, 5, 3, 6, 2, 7]:
                     if board[c][r] == '-':
                         a_place.append([c,r])
             else:
                 # white player
-                for r in range(r_max):
+                for r in [3, 2, 4, 1, 5, 0]:
                     if board[c][r] == '-':
                         a_place.append([c,r])
         for p in a_place:
