@@ -169,7 +169,7 @@ class Player:
         # most important: having more pieces than opponent
         # doesn't really matter how many more/less pieces we have
         # if we're far enough ahead/behind
-        score += max(-400, min((allies - enemies)*100, 400))
+        score += (allies - enemies)*100
         score += a_score - e_score
         # during moving phase, check for end-game state
         if turns >= 0:
