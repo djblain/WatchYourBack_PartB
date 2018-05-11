@@ -273,6 +273,40 @@ def move_perform(board, row, col, shrinks, direction):
         return piece_jump(board, row, col, direction)
     return None
 
+def dist_enemy(board, row, col):
+    """
+    Returns the distance to the closest enemy of the indicated piece
+
+    :param board: the board state to check
+    :param row: the row of the piece to check
+    :param col: the column of the piece to check
+    :return: the distance of the nearest enemy (or enemies), as a sum of the
+        row and column differences, or -1 if no enemies on board (or indicated
+        square does not contain a piece)
+    """
+    piece = board[col][row]
+    if piece not in ['O', '@']:
+        return -1
+    if piece == 'O':
+        enemy = '@'
+    else:
+        enemy = 'O'
+    dist_nearest = 10000
+    for c in range(8):
+        for r in range(8):
+            if board[c][r] == enemy:
+                # enemy here, update distance if nearer
+                dist = abs(c-col) + abs(r-row)
+                if dist < dist_nearest:
+                    dist_nearest = dist
+                if dist == 1:
+                    # couldn't get nearer, just return 1
+                    return 1
+    if dist_nearest != 10000:
+        return dist_nearest
+    else:
+        return -1
+
 def piece_adjacent(board, row, col, piece):
     """
     Determines whether there is a specified piece adjacent to a specified place

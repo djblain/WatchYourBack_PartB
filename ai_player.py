@@ -28,6 +28,9 @@ class Player:
         self.board = player_functions.board_init()
         self.placed = 0
         self.time_passed = 0
+        self.predictions = [] # a list of predicted best actions for opponent
+        self.op_turns = 0 # how many turns into moving phase opponent is
+        self.op_optimal = 1.0 # how 'optimally' opponent has played
         if colour == 'white':
             self.my_piece = 'O'
             self.op_piece = '@'
@@ -83,9 +86,6 @@ class Player:
         # shouldn't techincally be surrounded
         if player_functions.surrounded(board, row, col):
             return 0
-        # the closer a piece is to the center, the more it's worth
-        #if turns >= 0 or board[col][row] == self.my_piece:
-        val = 9-int(max(abs(3.5-row), abs(3.5-col)))**2
         # check how many enemies we are threatening
         l_adjacent = [[-1,0],[1,0],[0,-1],[0,1]]
         t_enemies = 0 # no. of enemies this piece is threatening
@@ -109,6 +109,7 @@ class Player:
                         if turns >= 0:
                             # moving phase
                             for t in l_adjacent:
+                                # try a movement first
                                 tx = l_threat[0] + t[0]
                                 ty = l_threat[1] + t[1]
                                 if player_functions.on_board(ty, tx, shrinks):
@@ -131,8 +132,28 @@ class Player:
                             # placing phase
                             if l_threat[1] in range(r_min,r_max):
                                 t_enemies += 1
-        val *= 3
-        val += 5*t_enemies
+        # the closer a piece is to the center, the more it's worth
+        val = 9 - int(abs(3.5-row)) - int(abs(3.5-col))
+        # if we're near a shrink, proximity to center more important
+        # than being threatening
+        if turns in range(100, 128) or turns in range(176, 192):
+            val *= 10
+            val += t_enemies
+        else:
+            val += 10*t_enemies
+        # check for friendly neighbouring pieces, or edges
+        # the piece's back is being 'watched'
+        # only do this when moving!
+        if turns >= 0:
+            for l in l_adjacent:
+                dx = col + l[0]
+                dy = row + l[1]
+                if player_functions.on_board(dy, dx, shrinks) == False:
+                    # edge of board, wouldn't get attacked on this side
+                    val += 5
+                elif board[dx][dy] == board[col][row]:
+                    # friendly piece, here to defend!
+                    val += 5
         return val
 
     def evaluation(self, board, turns, my_turn):
@@ -150,8 +171,6 @@ class Player:
         score = 0
         a_score = 0
         e_score = 0
-        a_offset = 0
-        e_offset = 0
         for c in range(8):
             for r in range(8):
                 if board[c][r] == self.my_piece:
@@ -160,21 +179,28 @@ class Player:
                 elif board[c][r] == self.op_piece:
                     enemies += 1
                     e_score -= self.piece_eval(board, r, c, turns, my_turn)
-        score += (allies - enemies)*100
+        # most important: having more pieces than opponent
+        # doesn't really matter how many more/less pieces we have
+        # if we're far enough ahead/behind
+        score += max(-200, min((allies - enemies)*100, 200))
+        score += a_score - e_score
+        # during moving phase, check for end-game state
         if turns >= 0:
             # into moving phase, we can win/lose/draw now
             if allies < 2 and enemies > 1:
-                # loss
+                # loss, not preferrable
                 return -5000
             if allies > 1 and enemies < 2:
-                # win
+                # win, always prefferable
                 return 5000
             if allies < 2 and enemies < 2:
-                # draw
+                # draw, not prefferable, except to loss
                 return -2500
-        #else:
-        #    print(score)
-        score += a_score - e_score
+        # 'blur' score by opponent optimality
+        # the more unpredictable the opponent, the more we should blur
+        # apparant score "goodness"
+        blur = int(5-4*self.op_optimal)
+        score = int(score/blur + 0.5) * blur
         return score
 
     def place_next(self, board, my_turn, alpha, beta, depth, depth_max):
@@ -202,39 +228,49 @@ class Player:
             # black player placing
             r_min = 2
         p_best = [] # list of best placements
-        p_break = False
+        #p_best = None
+        a_place = [] # list of placees to put pieces
         for c in range(8):
-            for r in range(r_min, r_max):
-                # place a piece
-                if board[c][r] == '-':
-                    if my_turn:
-                        n_board = player_functions.board_duplicate(board)
-                        n_board[c][r] = self.my_piece
-                        player_functions.eliminate(
-                            n_board, self.op_piece, self.my_piece)
-                        s = self.place_next(
-                            n_board, False, a, b, depth+1, depth_max)
-                        n_board = None
-                        if s == a:
-                            p_best.append([c,r])
-                        elif s > a:
-                            a = s
-                            p_best.clear()
-                            p_best.append([c,r])
-                    else:
-                        n_board = player_functions.board_duplicate(board)
-                        n_board[c][r] = self.op_piece
-                        player_functions.eliminate(
-                            n_board, self.my_piece, self.op_piece)
-                        s = self.place_next(
-                            n_board, True, a, b, depth+1, depth_max)
-                        n_board = None
-                        if s < b:
-                            b = s
-                if b <= a:
-                    p_break = True
-                    break
-            if p_break:
+            if r_min == 2:
+                # black player, start from bottom
+                for r in range(7, r_min-1, -1):
+                    if board[c][r] == '-':
+                        a_place.append([c,r])
+            else:
+                # white player
+                for r in range(r_max):
+                    if board[c][r] == '-':
+                        a_place.append([c,r])
+        for p in a_place:
+            c, r = p[0], p[1]
+            # place a piece
+            if my_turn:
+                n_board = player_functions.board_duplicate(board)
+                n_board[c][r] = self.my_piece
+                player_functions.eliminate(
+                    n_board, self.op_piece, self.my_piece)
+                s = self.place_next(
+                    n_board, False, a, b, depth+1, depth_max)
+                n_board = None
+                if s == a:
+                    p_best.append([c,r])
+                    #p_best = random.choice([p, p_best])
+                elif s > a:
+                    a = s
+                    #p_best = p
+                    p_best.clear()
+                    p_best.append([c,r])
+            else:
+                n_board = player_functions.board_duplicate(board)
+                n_board[c][r] = self.op_piece
+                player_functions.eliminate(
+                    n_board, self.my_piece, self.op_piece)
+                s = self.place_next(
+                    n_board, True, a, b, depth+1, depth_max)
+                n_board = None
+                if s < b:
+                    b = s
+            if b <= a:
                 break
         if depth == 0:
             #print(a)
@@ -251,190 +287,14 @@ class Player:
         :param turns: the number of turns that have occured
         :return: a tuple if valid placement occurs, None otherwise
         """
-        # use a-b pruning first
-        # search to depth 1 first
-        #p_best1 = self.place_next(self.board, True, -100000, 100000, 0, 1)
-        # then search to depth 2
-        p_best = self.place_next(self.board, True, -100000, 100000, 0, 2)
-        # now look at shared 'good' placements
-        p_shared = []
-        #for p in p_best1:
-        #    if p in p_best2:
-        #        p_shared.append(p)
-        if len(p_best) > 0:
-            n_place = random.choice(p_best)
-            self.board[n_place[0]][n_place[1]] = self.my_piece
-            player_functions.eliminate(self.board, self.op_piece, self.my_piece)
-            #self.print_board()
-            return (n_place[0], n_place[1])
-        # Alternatively to trying minimax...
-        print("uhhhhhh")
-        i_r = random.randrange(3,5)
-        i_c = random.randrange(3,5)
-        # know range of placeable rows
-        r_max = 8
-        r_min = 0
-        if self.colour == 'white':
-            # white player
-            r_max = 6
-        else:
-            # black player
-            r_min = 2
-        #TODO: implement
-        # figure out a 'good' position to place a piece
-        # try to first defend an endangered piece of ours
-        for c in range(8):
-            for r in range(8):
-                if self.board[c][r] == self.my_piece:
-                    # one of our pieces found
-                    p = player_functions.can_surround(self.board, r, c)
-                    if p is not None:
-                        if p[1] in range(8-r_max, 8-r_min):
-                            # first check whether we could defend by attacking
-                            ex = 2*c-p[0]
-                            ey = 2*r-p[1]
-                            dx = 2*ex-c
-                            dy = 2*ey-r
-                            if (player_functions.on_board(dy,dx)
-                                    and dy in range(r_min, r_max)):
-                                if self.board[dx][dy] == '-':
-                                    self.board[dx][dy] = self.my_piece
-                                    self.board[ex][ey] = '-'
-                                    if player_functions.can_surround(
-                                            self.board, dy, dx) is not None:
-                                        self.board[dx][dy] = '-'
-                                        self.board[ex][ey] = self.op_piece
-                                    else:
-                                        self.board[ex][ey] = self.op_piece
-                                        return (dx, dy)
-                            if (p[1] in range(r_min, r_max)
-                                    and self.board[p[0]][p[1]] == '-'):
-                                # could get surrounded, but can defend
-                                self.board[p[0]][p[1]] = self.my_piece
-                                #print("Placing to defend!")
-                                return p
-        # list of relative adjacent positions
-        l_adjacent = [[-1,0],[1,0],[0,-1],[0,1]]
-        # list of places to avoid placing
-        # avoid placing just above/below corners
-        l_avoid = [[0,1],[7,1],[0,6],[7,6]]
-        # list of enemy locations
-        l_enemy = []
-        for c in range(8):
-            for r in range(8-r_max, 8-r_min):
-                if self.board[c][r] == self.op_piece:
-                    # opposing piece here, add to list
-                    l_enemy.append([c,r])
-        # attempt to surround an enemy
-        for e in l_enemy:
-            v = player_functions.can_surround(self.board, e[1], e[0])
-            if v is not None:
-                if v[1] in range(r_min, r_max):
-                    # we can surround an enemy, attempt if safe
-                    n_board = player_functions.board_duplicate(self.board)
-                    n_board[v[0]][v[1]] = self.my_piece
-                    player_functions.eliminate(
-                        n_board, self.op_piece, self.my_piece)
-                    p_surround = player_functions.can_surround(
-                        n_board, v[1], v[0])
-                    if (p_surround is None and player_functions.surrounded(
-                            n_board,v[1],v[0]) == False):
-                        # piece won't get surrounded by taking, update board
-                        n_board = None
-                        self.board[v[0]][v[1]] = self.my_piece
-                        return v
-                    elif p_surround is not None:
-                        if p_surround[1] not in range(8-r_max, 8-r_min):
-                            # actually safe
-                            n_board = None
-                            self.board[v[0]][v[1]] = self.my_piece
-                            return v
-                    n_board = None
-        # attempt to threaten an enemy
-        for e in l_enemy:
-            for l in l_adjacent:
-                # check if we can place here
-                if (player_functions.on_board(e[1]+l[1], e[0]+l[0], 0) and
-                        player_functions.on_board(e[1]-l[1], e[0]-l[0], 0)):
-                    nc = e[0]+l[0]
-                    nr = e[1]+l[1]
-                    sc = e[0]-l[0]
-                    sr = e[1]-l[1]
-                    if nr in range(r_min, r_max) and self.board[nc][nr] == '-':
-                        # in our starting zone and free
-                        # attempt to place
-                        self.board[nc][nr] = self.my_piece
-                        if (player_functions.can_surround(
-                                self.board, nr, nc) is not None):
-                            # can get surrounded here, unsafe!
-                            self.board[nc][nr] = '-'
-                            l_avoid.append([nc,nr])
-                        elif not player_functions.on_board(sr, sc):
-                            # wouldn't be able to surround, not on board
-                            self.board[nc][nr] = '-'
-                            #l_avoid.append([nc,nr])
-                        else:
-                            # check if we actually threaten the piece
-                            if (player_functions.can_surround(
-                                    self.board, e[1], e[0]) is not None
-                                    and sr in range(r_min, r_max)):
-                                return (nc, nr)
-                            else:
-                                self.board[nc][nr] = '-'
-                                #l_avoid.append([nc,nr])
-        for e in range(1,5):
-            l_positions = []
-            adj_position_found = False
-            for c in range(4-e,4+e):
-                for r in range(4-e,4+e):
-                    if r in range(r_min, r_max):
-                        if self.board[c][r] == '-':
-                            if [c,r] not in l_avoid:
-                                adjacent = player_functions.piece_adjacent(
-                                    self.board, r, c, self.my_piece)
-                                if adjacent == adj_position_found:
-                                    l_positions.append([c,r])
-                                elif adjacent and not adj_position_found:
-                                    adj_position_found = True
-                                    l_positions.clear()
-                                    l_positions.append([c,r])
-            if len(l_positions) > 0:
-                f_pos = random.choice(l_positions)
-                for p in l_positions:
-                    if self.colour == 'black':
-                        # aim for lower positions
-                        if p[1] == f_pos[1]:
-                            f_pos = random.choice([p, f_pos])
-                        elif p[1] > f_pos[1]:
-                            f_pos = p
-                    else:
-                        # aim for lower positions
-                        if p[1] == f_pos[1]:
-                            f_pos = random.choice([p, f_pos])
-                        elif p[1] < f_pos[1]:
-                            f_pos = p
-                self.board[f_pos[0]][f_pos[1]] = self.my_piece
-                return (f_pos[0], f_pos[1])
-        # just randomly use a safe position
-        if self.colour == 'white':
-            # avoid placing near bottom of starting zone
-            r_max -= 1
-        else:
-            # avoid placing near top of starting zone
-            r_min += 1
-        # keep track of attempts at avoiding an unsafe square
-        # just place even if unsafe if taking too long
-        a_attempts = 0
-        while ((self.board[i_c][i_r] != '-' or i_r not in range(r_min, r_max))
-                or ([i_c,i_r] in l_avoid and a_attempts < 10)):
-            # bias placement towards center of board
-            i_c = random.randrange(
-                max(0,3-int(a_attempts/2)), min(8,5+int(a_attempts/2)))
-            i_r = random.randrange(
-                max(r_min,3-int(a_attempts/2)), min(r_max,5+int(a_attempts/2)))
-            a_attempts += 1
-        self.board[i_c][i_r] = self.my_piece
-        return (i_c, i_r)
+        # use a-b pruning
+        depth = min(2, max(1, 24-turns))
+        p_best = self.place_next(self.board, True, -100000, 100000, 0, depth)
+        n_place = random.choice(p_best)
+        #n_place = p_best
+        self.board[n_place[0]][n_place[1]] = self.my_piece
+        player_functions.eliminate(self.board, self.op_piece, self.my_piece)
+        return (n_place[0], n_place[1])
 
     def moves_generate(self, board, my_turn, shrinks):
         """
@@ -455,7 +315,18 @@ class Player:
             for r in range(8):
                 if board[c][r] == p_check:
                     # appropriate piece found
-                    p_locations.append([c,r])
+                    dist = player_functions.dist_enemy(board, r, c)
+                    # add in order of increasing distance
+                    if dist != -1:
+                        i = 0
+                        while i < len(p_locations):
+                            if dist < p_locations[i][2]:
+                                p_locations.insert(i, [c,r,dist])
+                                break
+                            i += 1
+                        if i == len(p_locations):
+                            # add to end of list instead
+                            p_locations.append([c,r,dist])
         dirs = ["left","right","up","down"]
         moves = []
         for l in p_locations:
@@ -508,9 +379,11 @@ class Player:
             n_board = None
             return n_score
         m_best = [] # list of best moves, return if depth == 0 instead of score
+        if depth == 1:
+            self.predictions.clear()
         for m in l_moves:
             n_board = player_functions.board_duplicate(board)
-            player_functions.move_perform(
+            res = player_functions.move_perform(
                 n_board, m[1], m[0], shrinks, m[2])
             if my_turn:
                 player_functions.eliminate(
@@ -536,7 +409,14 @@ class Player:
                     player_functions.shrink(n_board, n_shrinks)
                 s = self.move_next(
                     n_board, True, turns+1, a, b, depth+1, depth_max)
-                if s < b:
+                if s == b and depth == 1:
+                    # append "predicted" action
+                    self.predictions.append(((m[0],m[1]),res))
+                elif s < b:
+                    if depth == 1:
+                        # possible best next turn for opponent
+                        self.predictions.clear()
+                        self.predictions.append(((m[0],m[1]),(res[0],res[1])))
                     b = s
             n_board = None
             if b <= a:
@@ -567,30 +447,32 @@ class Player:
         op_moves = player_functions.moves_available(
             self.board, self.op_piece, shrinks)
         # approx. average branching factor between the two teams
-        b_factor = int((my_moves+op_moves)/2+1.5)
+        #b_factor = int((my_moves+op_moves)/2+1.5)
         d_max = 2
-        t_max = 12000 # try to keep running time complexity below this
+        t_max = 10000 # try to keep running time complexity below this
         # lower allowed running time based on how long has passed in the game
         t_max = max(int(t_max - self.time_passed*80), 3000)
         # assume branching factor, b_factor, is average of total moves per team
-        while d_max < 8 and pow(b_factor, d_max+1) <= t_max:
+        while d_max < 8 and (pow(my_moves, int((d_max+1)/2+0.5))
+                * pow(op_moves, int((d_max+1)/2)) <= t_max):
             # we can go further, increase depth
             d_max += 1
         l_moves = []
-        #print(type(l_moves))
+        #print("Depth of search: " + str(d_max))
         l_moves = self.move_next(
             self.board, True, turns, -100000, 100000, 0, d_max)
         if l_moves is None:
             return None
-        #print(l_moves)
         s_best = -10000
         l_moves2 = []
         if d_max > 2:
             # best moves only considering next two turns (i.e. one per player)
+            p_copy = self.predictions.copy()
             l_moves2 = self.move_next(
                 self.board, True, turns, -100000, 100000, 0, 2)
+            self.predictions = p_copy.copy()
+            p_copy = None
         l_remove = []
-        #print(type(l_moves))
         f_move = random.choice(l_moves)
         if len(l_moves2) > 0:
             for m in l_moves:
@@ -615,8 +497,25 @@ class Player:
         t_start = time.time()
         player_functions.update(
             self.board, action, self.my_piece, self.op_piece)
+        if action != None:
+            if type(action[0]) == tuple:
+                # moving phase, so check how opponent plays
+                # update average
+                if self.op_turns > 0:
+                    self.op_optimal *= self.op_turns
+                    if action in self.predictions:
+                        # playing predictably
+                        self.op_optimal += 1
+                    #else:
+                    #    print(self.predictions)
+                    self.op_turns += 1
+                    self.op_optimal /= self.op_turns
+                else:
+                    self.op_turns += 1
+                #print("Opponent optimality: " + str(self.op_optimal))
         self.time_passed += time.time() - t_start
-        #print("Time (" + self.colour + "): " + str(self.time_passed) + " seconds")
+        #print("Time (" + self.colour + "): "
+        #    + str(self.time_passed) + " seconds")
 
     def action(self, turns):
         """
