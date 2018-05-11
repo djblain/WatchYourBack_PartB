@@ -28,6 +28,9 @@ class Player:
         self.board = player_functions.board_init()
         self.placed = 0
         self.time_passed = 0
+        self.b_alpha = -10000 # the best score determined in a move
+        self.b_sum = 0 # sum of beta values from possible enemy follow-up moves
+        self.b_mean = 0 # mean beta value from possible enemy follow-ups
         self.predictions = [] # a list of predicted best actions for opponent
         self.op_turns = 0 # how many turns into moving phase opponent is
         self.op_optimal = 1.0 # how 'optimally' opponent has played
@@ -81,10 +84,6 @@ class Player:
             if turns < 0:
                 r_min = 2 # can't place below this
         else:
-            return 0
-        # check if surrounded here
-        # shouldn't techincally be surrounded
-        if player_functions.surrounded(board, row, col):
             return 0
         # check how many enemies we are threatening
         l_adjacent = [[-1,0],[1,0],[0,-1],[0,1]]
@@ -144,16 +143,16 @@ class Player:
         # check for friendly neighbouring pieces, or edges
         # the piece's back is being 'watched'
         # only do this when moving!
-        if turns >= 0:
-            for l in l_adjacent:
-                dx = col + l[0]
-                dy = row + l[1]
-                if player_functions.on_board(dy, dx, shrinks) == False:
-                    # edge of board, wouldn't get attacked on this side
-                    val += 5
-                elif board[dx][dy] == board[col][row]:
-                    # friendly piece, here to defend!
-                    val += 5
+##        if turns >= 0:
+##            for l in l_adjacent:
+##                dx = col + l[0]
+##                dy = row + l[1]
+##                if player_functions.on_board(dy, dx, shrinks) == False:
+##                    # edge of board, wouldn't get attacked on this side
+##                    val += 5
+##                elif board[dx][dy] == board[col][row]:
+##                    # friendly piece, here to defend!
+##                    val += 5
         return val
 
     def evaluation(self, board, turns, my_turn):
@@ -199,7 +198,7 @@ class Player:
         # 'blur' score by opponent optimality
         # the more unpredictable the opponent, the more we should blur
         # apparant score "goodness"
-        blur = int(5-4*self.op_optimal)
+        blur = int(8-7*self.op_optimal)
         score = int(score/blur + 0.5) * blur
         return score
 
@@ -366,6 +365,9 @@ class Player:
             return (c_score - depth)
         if depth == depth_max:
             return c_score
+        if depth == 0 and not my_turn:
+            # checking enemy best moves
+            self.b_sum = 0
         l_moves = self.moves_generate(board, my_turn, shrinks)
         # check that a move is possible
         if len(l_moves) == 0:
@@ -377,10 +379,12 @@ class Player:
             n_score = self.move_next(n_board, not my_turn, turns+1, a, b,
                 depth+1, depth_max)
             n_board = None
-            return n_score
+            if depth > 0:
+                return n_score
+            else:
+                self.b_sum = n_score
+                return None
         m_best = [] # list of best moves, return if depth == 0 instead of score
-        if depth == 1:
-            self.predictions.clear()
         for m in l_moves:
             n_board = player_functions.board_duplicate(board)
             res = player_functions.move_perform(
@@ -394,11 +398,12 @@ class Player:
                     n_board, False, turns+1, a, b, depth+1, depth_max)
                 if s > a:
                     a = s
-                    m_best.clear()
-                    m_best.append(m)
+                    if depth == 0:
+                        m_best.clear()
+                        m_best.append(m)
                     #if depth == 0:
                     #    print(str(m_best) + " " + str(a))
-                elif s == a:
+                elif s == a and depth == 0:
                     m_best.append(m)
                     #if depth == 0:
                     #    print("Also: " + str(m))
@@ -409,21 +414,15 @@ class Player:
                     player_functions.shrink(n_board, n_shrinks)
                 s = self.move_next(
                     n_board, True, turns+1, a, b, depth+1, depth_max)
-                if s == b and depth == 1:
-                    # append "predicted" action
-                    self.predictions.append(((m[0],m[1]),res))
-                elif s < b:
-                    if depth == 1:
-                        # possible best next turn for opponent
-                        self.predictions.clear()
-                        self.predictions.append(((m[0],m[1]),(res[0],res[1])))
+                if depth == 0:
+                    m_best.append(m)
+                    self.b_sum += s
+                if s < b:
                     b = s
             n_board = None
             if b <= a:
                 break
         if depth == 0:
-            #print("Best: " + str(m) + " / " +str(a))
-            #print(a)
             if len(l_moves) > 0:
                 return m_best
             else:
@@ -440,6 +439,18 @@ class Player:
         :param turns: the number of turns into the moving phase we are
         :return: a tuple of tuples for a valid move
         """
+        if turns > 1:
+            c_score = self.evaluation(self.board, turns, True)
+            #print(c_score)
+            self.op_optimal = int(self.op_optimal*self.op_turns + 0.5)
+            if c_score < self.b_mean:
+                # opponent playing well
+                self.op_optimal += 1
+            self.op_turns += 1
+            self.op_optimal /= self.op_turns
+            #print(self.op_optimal)
+        else:
+            self.op_turns += 1
         shrinks = player_functions.get_shrinks(turns)
         #n_pieces = player_functions.pieces_count(self.board)
         my_moves = player_functions.moves_available(
@@ -449,14 +460,14 @@ class Player:
         # approx. average branching factor between the two teams
         #b_factor = int((my_moves+op_moves)/2+1.5)
         d_max = 2
-        t_max = 10000 # try to keep running time complexity below this
+        t_max = 9000 # try to keep running time complexity below this
         # lower allowed running time based on how long has passed in the game
         t_max = max(int(t_max - self.time_passed*80), 3000)
         # assume branching factor, b_factor, is average of total moves per team
-        while d_max < 8 and (pow(my_moves, int((d_max+1)/2+0.5))
-                * pow(op_moves, int((d_max+1)/2)) <= t_max):
+        while d_max < 8 and (pow(my_moves, int((d_max+2)/2+0.5))
+                * pow(op_moves, int((d_max+2)/2)) <= t_max):
             # we can go further, increase depth
-            d_max += 1
+            d_max += 2
         l_moves = []
         #print("Depth of search: " + str(d_max))
         l_moves = self.move_next(
@@ -464,28 +475,23 @@ class Player:
         if l_moves is None:
             return None
         s_best = -10000
-        l_moves2 = []
-        if d_max > 2:
-            # best moves only considering next two turns (i.e. one per player)
-            p_copy = self.predictions.copy()
-            l_moves2 = self.move_next(
-                self.board, True, turns, -100000, 100000, 0, 2)
-            self.predictions = p_copy.copy()
-            p_copy = None
-        l_remove = []
         f_move = random.choice(l_moves)
-        if len(l_moves2) > 0:
-            for m in l_moves:
-                # try to do move which is best "immediately"
-                # select from list of "best" long-term moves
-                if m not in l_moves2:
-                    l_remove.append(m)
-            if len(l_remove) < len(l_moves):
-                while f_move in l_remove:
-                    f_move = random.choice(l_moves)
         n_pos = player_functions.move_perform(
             self.board, f_move[1], f_move[0], shrinks, f_move[2])
         player_functions.eliminate(self.board, self.op_piece, self.my_piece)
+        # try to predict next moves by opponent
+        self.predictions.clear()
+        op_best = self.move_next(
+            self.board, False, turns+1, self.b_alpha, 10000, 0, 1)
+        if type(op_best) == list:
+            if len(op_best) > 1:
+                self.b_mean = self.b_sum / len(op_best)
+            else:
+                self.b_mean = self.b_sum
+        else:
+            self.b_mean = self.b_sum
+        #print(self.b_mean)
+        #print(self.b_sum)
         return ((f_move[0], f_move[1]), n_pos)
 
     def update(self, action):
@@ -497,22 +503,22 @@ class Player:
         t_start = time.time()
         player_functions.update(
             self.board, action, self.my_piece, self.op_piece)
-        if action != None:
-            if type(action[0]) == tuple:
-                # moving phase, so check how opponent plays
-                # update average
-                if self.op_turns > 0:
-                    self.op_optimal *= self.op_turns
-                    if action in self.predictions:
-                        # playing predictably
-                        self.op_optimal += 1
-                    #else:
-                    #    print(self.predictions)
-                    self.op_turns += 1
-                    self.op_optimal /= self.op_turns
-                else:
-                    self.op_turns += 1
-                #print("Opponent optimality: " + str(self.op_optimal))
+##        if action != None:
+##            if type(action[0]) == tuple:
+##                # moving phase, so check how opponent plays
+##                # update average
+##                if self.op_turns > 0:
+##                    self.op_optimal = int(self.op_optimal*self.op_turns+0.5)
+##                    if action in self.predictions:
+##                        # playing predictably
+##                        self.op_optimal += 1
+##                    else:
+##                        print(self.predictions)
+##                    self.op_turns += 1
+##                    self.op_optimal /= self.op_turns
+##                else:
+##                    self.op_turns += 1
+##                print("Opponent optimality: " + str(self.op_optimal))
         self.time_passed += time.time() - t_start
         #print("Time (" + self.colour + "): "
         #    + str(self.time_passed) + " seconds")
