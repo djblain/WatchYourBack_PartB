@@ -47,3 +47,8 @@ benefits the opponent may gain from this.
 # Other details
 The file to test is ai_player.py
 It must be in the same folder as player_functions.py to function, however
+Files:
+- ai_player.py (the AI player module)
+- player_functions.py (contains functions used by player modules)
+- human_player.py (allows a human to play)
+- ai_random_player.py (another autonomous player, but places and moves randomly)
