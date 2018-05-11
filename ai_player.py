@@ -138,23 +138,8 @@ class Player:
         if turns in range(100, 128) or turns in range(176, 192):
             val *= 10
             val += t_enemies
-        elif turns == -1:
-            val += t_enemies*2
         else:
             val += 10*t_enemies
-        # check for friendly neighbouring pieces, or edges
-        # the piece's back is being 'watched'
-        # only do this when moving!
-##        if turns >= 0:
-##            for l in l_adjacent:
-##                dx = col + l[0]
-##                dy = row + l[1]
-##                if player_functions.on_board(dy, dx, shrinks) == False:
-##                    # edge of board, wouldn't get attacked on this side
-##                    val += 5
-##                elif board[dx][dy] == board[col][row]:
-##                    # friendly piece, here to defend!
-##                    val += 5
         return val
 
     def evaluation(self, board, turns, my_turn):
@@ -183,7 +168,7 @@ class Player:
         # most important: having more pieces than opponent
         # doesn't really matter how many more/less pieces we have
         # if we're far enough ahead/behind
-        score += max(-200, min((allies - enemies)*100, 200))
+        score += max(-400, min((allies - enemies)*100, 400))
         score += a_score - e_score
         # during moving phase, check for end-game state
         if turns >= 0:
@@ -289,7 +274,7 @@ class Player:
         :return: a tuple if valid placement occurs, None otherwise
         """
         # use a-b pruning
-        depth = min(2, max(1, 24-turns))
+        depth = min(max(1,24-turns),2)
         p_best = self.place_next(self.board, True, -100000, 100000, 0, depth)
         n_place = random.choice(p_best)
         #n_place = p_best
@@ -445,7 +430,7 @@ class Player:
             c_score = self.evaluation(self.board, turns, True)
             #print(c_score)
             self.op_optimal = int(self.op_optimal*self.op_turns + 0.5)
-            if c_score < self.b_mean:
+            if c_score < self.b_mean - abs(self.b_mean/10):
                 # opponent playing well
                 self.op_optimal += 1
             self.op_turns += 1
@@ -454,15 +439,12 @@ class Player:
         else:
             self.op_turns += 1
         shrinks = player_functions.get_shrinks(turns)
-        #n_pieces = player_functions.pieces_count(self.board)
         my_moves = player_functions.moves_available(
             self.board, self.my_piece, shrinks)
         op_moves = player_functions.moves_available(
             self.board, self.op_piece, shrinks)
-        # approx. average branching factor between the two teams
-        #b_factor = int((my_moves+op_moves)/2+1.5)
         d_max = 2
-        t_max = 1200 # try to keep running time complexity below this
+        t_max = 20000 # try to keep running time complexity below this
         # lower allowed running time based on how long has passed in the game
         t_max = max(int(t_max - self.time_passed*80), 3000)
         # assume branching factor, b_factor, is average of total moves per team
@@ -505,22 +487,6 @@ class Player:
         t_start = time.time()
         player_functions.update(
             self.board, action, self.my_piece, self.op_piece)
-##        if action != None:
-##            if type(action[0]) == tuple:
-##                # moving phase, so check how opponent plays
-##                # update average
-##                if self.op_turns > 0:
-##                    self.op_optimal = int(self.op_optimal*self.op_turns+0.5)
-##                    if action in self.predictions:
-##                        # playing predictably
-##                        self.op_optimal += 1
-##                    else:
-##                        print(self.predictions)
-##                    self.op_turns += 1
-##                    self.op_optimal /= self.op_turns
-##                else:
-##                    self.op_turns += 1
-##                print("Opponent optimality: " + str(self.op_optimal))
         self.time_passed += time.time() - t_start
         #print("Time (" + self.colour + "): "
         #    + str(self.time_passed) + " seconds")
