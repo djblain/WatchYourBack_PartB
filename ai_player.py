@@ -452,7 +452,7 @@ class Player:
         d_max = 2
         t_max = 20000 # try to keep running time complexity below this
         # lower allowed running time based on how long has passed in the game
-        t_max = max(t_max * 0.1/t_average, 3000)
+        t_max = max(t_max * 0.2/t_average, 3000)
         # assume branching factor, b_factor, is average of total moves per team
         while d_max < 8 and (pow(my_moves, int((d_max+2)/2+0.5))
                 * pow(op_moves, int((d_max+2)/2)) <= t_max):
